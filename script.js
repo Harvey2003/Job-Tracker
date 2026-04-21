@@ -229,7 +229,7 @@ function buildJobCard(job) {
         <p class="jobSub">${job.client_name || "No client"} · ${job.start_date || "No date"}</p>
     `;
 
-    card.addEventListener("click", () => openJobDetail(job));
+    card.addEventListener("click", () => openJobDetail(job.id));
     return card;
 }
 
