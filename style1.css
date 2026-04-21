@@ -19,7 +19,7 @@ body {
     display: none;
     position: fixed;
     inset: 0;
-    background-color: #f9fafb;
+    background-color: #111827;
     z-index: 1000;
     align-items: center;
     justify-content: center;
@@ -30,41 +30,74 @@ body {
 }
 
 #loginCard {
-    background-color: #ffffff;
+    background-color: #1f2937;
     width: 90vw;
-    border-radius: 20px;
+    border-radius: 24px;
     padding: 8vw;
     display: flex;
     flex-direction: column;
     gap: 1vw;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    border: 1px solid #374151;
 }
 
 #loginCompany {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #9ca3af;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #f59e0b;
     margin-bottom: 2vw;
+    letter-spacing: -0.5px;
 }
 
 #loginTitle {
     font-size: 1.3rem;
     font-weight: 700;
-    color: #111827;
+    color: #f9fafb;
     margin-bottom: 1vw;
 }
 
 #loginSub {
     font-size: 0.82rem;
-    color: #9ca3af;
+    color: #6b7280;
     margin-bottom: 4vw;
 }
 
 #loginError {
     font-size: 0.82rem;
-    color: #dc2626;
+    color: #f87171;
     min-height: 1.2em;
     margin-top: 1vw;
+}
+
+/* Login inputs dark themed */
+#loginEmail,
+#loginPassword {
+    background-color: #111827;
+    border-color: #374151;
+    color: #f9fafb;
+}
+
+#loginEmail:focus,
+#loginPassword:focus {
+    border-color: #f59e0b;
+    background-color: #111827;
+}
+
+#loginEmail::placeholder,
+#loginPassword::placeholder {
+    color: #4b5563;
+}
+
+/* Login button amber */
+#loginButton {
+    background-color: #f59e0b;
+    color: #111827;
+    font-weight: 700;
+    margin-top: 3vw;
+}
+
+#loginButton:active {
+    background-color: #d97706;
 }
 
 /* === TOP NAV === */
@@ -74,8 +107,8 @@ body {
     justify-content: space-between;
     padding: 0 5vw;
     height: 64px;
-    background-color: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
+    background-color: #111827;
+    border-bottom: 1px solid #1f2937;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -83,8 +116,8 @@ body {
 
 #companyName {
     font-size: 1.1rem;
-    font-weight: 700;
-    color: #111827;
+    font-weight: 800;
+    color: #f59e0b;
     letter-spacing: -0.5px;
 }
 
@@ -96,14 +129,14 @@ body {
 
 #welcomeTitle {
     font-size: 0.7rem;
-    color: #9ca3af;
+    color: #6b7280;
     font-weight: 400;
 }
 
 #welcomeSub {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #111827;
+    color: #f9fafb;
 }
 
 #openCloseNav {
@@ -114,16 +147,16 @@ body {
     justify-content: center;
     border-radius: 8px;
     cursor: pointer;
-    color: #6b7280;
-    border: 1px solid #e5e7eb;
+    color: #9ca3af;
+    border: 1px solid #374151;
     background-color: transparent;
     transition: all 0.15s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
 #openCloseNav:hover, #openCloseNav:active {
-    background-color: #f3f4f6;
-    color: #111827;
+    background-color: #1f2937;
+    color: #f9fafb;
 }
 
 /* === OVERLAY === */
@@ -131,7 +164,7 @@ body {
     display: none;
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: rgba(0, 0, 0, 0.5);
     z-index: 200;
     backdrop-filter: blur(2px);
 }
@@ -147,8 +180,8 @@ body {
     left: 0;
     width: 75vw;
     height: 100dvh;
-    background-color: #ffffff;
-    border-right: 1px solid #e5e7eb;
+    background-color: #111827;
+    border-right: 1px solid #1f2937;
     padding: 5vw;
     z-index: 300;
     transform: translateX(-100%);
@@ -165,7 +198,7 @@ body {
 #navHeader {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #9ca3af;
+    color: #4b5563;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     padding: 0 3vw;
@@ -183,20 +216,20 @@ body {
     cursor: pointer;
     font-size: 0.95rem;
     font-weight: 500;
-    color: #6b7280;
+    color: #9ca3af;
     transition: all 0.15s ease;
     -webkit-tap-highlight-color: transparent;
     min-height: 52px;
 }
 
 .navItem:hover, .navItem:active {
-    background-color: #f3f4f6;
-    color: #111827;
+    background-color: #1f2937;
+    color: #f9fafb;
 }
 
 .navItem.active {
-    background-color: #f3f4f6;
-    color: #111827;
+    background-color: #1f2937;
+    color: #f59e0b;
     font-weight: 600;
 }
 
@@ -205,6 +238,17 @@ body {
     width: 20px;
     text-align: center;
     color: inherit;
+}
+
+/* Logout item red tint */
+#logoutButton {
+    margin-top: auto;
+    color: #6b7280;
+}
+
+#logoutButton:hover, #logoutButton:active {
+    background-color: #1f2937;
+    color: #f87171;
 }
 
 /* === MAIN CONTENT === */
@@ -230,8 +274,8 @@ body {
 }
 
 #addJob:hover, #addJob:active {
-    border-color: #9ca3af;
-    background-color: #f9fafb;
+    border-color: #f59e0b;
+    background-color: #fffbeb;
 }
 
 #addJobInner {
@@ -244,11 +288,11 @@ body {
     width: 42px;
     height: 42px;
     border-radius: 10px;
-    background-color: #f3f4f6;
+    background-color: #fef3c7;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #6b7280;
+    color: #f59e0b;
     font-size: 1rem;
     flex-shrink: 0;
 }
@@ -273,12 +317,13 @@ body {
     padding: 4.5vw;
     border: 1px solid #e5e7eb;
     cursor: pointer;
-    transition: box-shadow 0.15s ease;
+    transition: all 0.15s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
 .jobCard:active {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+    border-color: #f59e0b;
 }
 
 .jobCardHeader {
@@ -306,8 +351,8 @@ body {
     font-weight: 600;
     padding: 0.3em 0.8em;
     border-radius: 20px;
-    background-color: #dcfce7;
-    color: #16a34a;
+    background-color: #fef3c7;
+    color: #d97706;
 }
 
 /* === NEW JOB FORM === */
@@ -315,11 +360,12 @@ body {
     display: none;
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     z-index: 400;
     align-items: flex-end;
     justify-content: center;
+    padding: 0;
 }
 
 #newJobForm.active {
@@ -328,23 +374,34 @@ body {
 
 #formCard {
     background-color: #ffffff;
-    width: 100vw;
+    width: 100%;
     max-height: 88dvh;
-    border-radius: 20px 20px 0 0;
-    padding: 6vw;
-    padding-top: 7vw;
+    border-radius: 24px 24px 0 0;
+    padding: 5vw 6vw 8vw 6vw;
     display: flex;
     flex-direction: column;
-    gap: 1vw;
+    gap: 0;
     overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Drag handle visual */
+#formCard::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    background-color: #e5e7eb;
+    border-radius: 2px;
+    margin: 0 auto 5vw auto;
+    flex-shrink: 0;
 }
 
 #formTitleRow {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 3vw;
+    margin-bottom: 5vw;
 }
 
 #formTitle {
@@ -376,7 +433,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1.5vw;
-    margin-bottom: 3vw;
+    margin-bottom: 4vw;
 }
 
 .formHeader {
@@ -397,15 +454,16 @@ body {
     color: #111827;
     outline: none;
     transition: border 0.15s ease;
+    width: 100%;
 }
 
 .newJobInput:focus {
-    border-color: #9ca3af;
+    border-color: #f59e0b;
     background-color: #ffffff;
 }
 
 #notesInput {
-    height: 28vw;
+    height: 24vw;
     font-size: 0.95rem;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
@@ -416,10 +474,11 @@ body {
     transition: border 0.15s ease;
     resize: none;
     font-family: 'Inter', sans-serif;
+    width: 100%;
 }
 
 #notesInput:focus {
-    border-color: #9ca3af;
+    border-color: #f59e0b;
     background-color: #ffffff;
 }
 
@@ -457,6 +516,18 @@ body {
 
 .formButton:active {
     background-color: #374151;
+}
+
+/* Create job button amber */
+#newJobButton {
+    background-color: #f59e0b;
+    color: #111827;
+    font-weight: 700;
+    margin-top: 4vw;
+}
+
+#newJobButton:active {
+    background-color: #d97706;
 }
 
 /* === EMPTY STATE === */
@@ -538,13 +609,14 @@ body {
 
 #jobDetailEditToggle:active {
     background-color: #f3f4f6;
+    color: #f59e0b;
 }
 
 /* === CLOCK SECTION === */
 #clockSection {
-    background-color: #ffffff;
+    background-color: #111827;
     border-radius: 16px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #1f2937;
     padding: 5vw;
     display: flex;
     flex-direction: column;
@@ -557,8 +629,8 @@ body {
     height: 64px;
     border: none;
     border-radius: 14px;
-    background-color: #111827;
-    color: #ffffff;
+    background-color: #f59e0b;
+    color: #111827;
     font-size: 1.05rem;
     font-weight: 700;
     cursor: pointer;
@@ -572,6 +644,7 @@ body {
 
 #clockButton.clockedIn {
     background-color: #dc2626;
+    color: #ffffff;
 }
 
 #clockButton:active {
@@ -580,14 +653,14 @@ body {
 
 #clockStatus {
     font-size: 0.8rem;
-    color: #9ca3af;
+    color: #6b7280;
     text-align: center;
 }
 
 #totalTimeDisplay {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #111827;
+    color: #f59e0b;
     text-align: center;
 }
 
@@ -631,4 +704,25 @@ body {
     border-radius: 16px;
     border: 1px solid #e5e7eb;
     padding: 5vw;
+}
+
+/* Save button amber */
+#saveEditButton {
+    background-color: #f59e0b;
+    color: #111827;
+    font-weight: 700;
+}
+
+#saveEditButton:active {
+    background-color: #d97706;
+}
+
+/* Complete button */
+#completeJobButton {
+    background-color: #16a34a !important;
+    color: #ffffff;
+}
+
+#completeJobButton:active {
+    background-color: #15803d !important;
 }
