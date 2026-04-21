@@ -54,14 +54,14 @@ const saveEditButton      = document.getElementById("saveEditButton");
 const timeLogsContainer   = document.getElementById("timeLogsContainer");
 
 // === STATE ===
-let currentJob  = null;
-let currentUser = null;
+let currentJob        = null;
+let currentUser       = null;
+let activeSession     = null; // the open time_log row if clocked in, else null
 
 // === LOCAL STORAGE HELPERS ===
 function cacheJob(job) {
     try {
         localStorage.setItem(`job_${job.id}`, JSON.stringify(job));
-        console.log(`[cache] Saved job_${job.id} | clocked_in_at: ${job.clocked_in_at} | clocked_out_at: ${job.clocked_out_at}`);
     } catch(e) {
         console.warn("localStorage write failed:", e);
     }
@@ -149,8 +149,9 @@ loginPassword.addEventListener("keydown", (e) => {
 // === LOGOUT ===
 logoutButton.addEventListener("click", async () => {
     await db.auth.signOut();
-    currentUser = null;
-    currentJob  = null;
+    currentUser  = null;
+    currentJob   = null;
+    activeSession = null;
     closeNav();
 });
 
@@ -338,6 +339,28 @@ newJobButton.addEventListener("click", async () => {
     closeForm();
 });
 
+// === CHECK ACTIVE SESSION ===
+// Queries time_logs for an open session (clocked_in, not yet clocked_out)
+// for the current user on the current job
+async function checkActiveSession(jobId) {
+    const { data, error } = await db
+        .from("time_logs")
+        .select("*")
+        .eq("job_id", jobId)
+        .eq("user_id", currentUser.id)
+        .is("clocked_out_at", null)
+        .order("clocked_in_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        console.error("checkActiveSession error:", error);
+        return null;
+    }
+
+    return data; // returns the open session row, or null if none
+}
+
 // === OPEN JOB DETAIL ===
 async function openJobDetail(jobId) {
     jobDetail.classList.add("active");
@@ -345,34 +368,23 @@ async function openJobDetail(jobId) {
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 
-    // Only use memory if same job AND not clocked in
-    // If clocked in always go to Supabase for truth
-    if (currentJob && currentJob.id === jobId && !currentJob.clocked_in_at) {
-        populateDetailView(currentJob);
-        updateClockUI(currentJob);
-        loadTimeLogs(currentJob.id);
-        return;
-    }
-
-    // Show cached version instantly while fetching fresh
+    // Show cached job instantly while we fetch fresh
     const cachedJob = getCachedJob(jobId);
     if (cachedJob) {
         currentJob = cachedJob;
         populateDetailView(cachedJob);
-        updateClockUI(cachedJob);
-        loadTimeLogs(cachedJob.id);
     } else {
         timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading...</p>`;
     }
 
-    // Always fetch fresh from Supabase
-    const { data: freshJob, error } = await db
+    // Always fetch fresh job from Supabase
+    const { data: freshJob, error: jobError } = await db
         .from("Jobs")
         .select("*")
         .eq("id", jobId)
         .single();
 
-    if (error || !freshJob) {
+    if (jobError || !freshJob) {
         if (!currentJob) {
             alert("Failed to load job details.");
             closeJobDetail();
@@ -380,15 +392,19 @@ async function openJobDetail(jobId) {
         return;
     }
 
-    // Update with confirmed server data
     currentJob = freshJob;
     cacheJob(freshJob);
     populateDetailView(freshJob);
-    updateClockUI(freshJob);
-    loadTimeLogs(freshJob.id);
 
     const card = jobCardsContainer.querySelector(`[data-id="${freshJob.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(freshJob), card);
+
+    // Check if this user has an open session on this job
+    activeSession = await checkActiveSession(jobId);
+    updateClockUI(activeSession);
+
+    // Load all time logs
+    loadTimeLogs(jobId);
 }
 
 // === CLOSE JOB DETAIL ===
@@ -423,19 +439,20 @@ function populateDetailView(job) {
 }
 
 // === CLOCK UI ===
-function updateClockUI(job) {
-    const totalSeconds = job.total_time_seconds || 0;
+// session = the open time_log row if clocked in, or null if not
+function updateClockUI(session) {
+    const totalSeconds = currentJob?.total_time_seconds || 0;
 
-    if (job.clocked_in_at && !job.clocked_out_at) {
+    if (session && session.clocked_in_at) {
+        // Currently clocked in
         clockButton.classList.add("clockedIn");
         clockButtonText.textContent = "Clock Out";
-        clockStatus.textContent = `Clocked in at ${formatTime(new Date(job.clocked_in_at))}`;
+        clockStatus.textContent = `Clocked in at ${formatTime(new Date(session.clocked_in_at))}`;
     } else {
+        // Not clocked in
         clockButton.classList.remove("clockedIn");
         clockButtonText.textContent = "Clock In";
-        clockStatus.textContent = job.clocked_out_at
-            ? `Last clocked out at ${formatTime(new Date(job.clocked_out_at))}`
-            : "Not yet clocked in";
+        clockStatus.textContent = "Not clocked in";
     }
 
     totalTimeDisplay.textContent = totalSeconds > 0
@@ -443,121 +460,129 @@ function updateClockUI(job) {
         : "";
 }
 
-// === HANDLE CLOCK OUT ===
-async function handleClockOut() {
-    const now            = new Date().toISOString();
-    const clockInTime    = new Date(currentJob.clocked_in_at);
-    const clockOutTime   = new Date(now);
-    const sessionSeconds = Math.floor((clockOutTime - clockInTime) / 1000);
-    const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
-
-    const displayName = currentUser?.user_metadata?.display_name
-        || currentUser?.email?.split("@")[0]
-        || "Unknown";
-
-    // Capture clock-in time before overwriting currentJob
-    const clockedInAt = currentJob.clocked_in_at;
-    const jobId       = currentJob.id;
-
-    // Update local state immediately
-    const updatedJob = {
-        ...currentJob,
-        clocked_out_at:     now,
-        total_time_seconds: newTotal
-    };
-    currentJob = updatedJob;
-    cacheJob(updatedJob);
-    updateClockUI(updatedJob);
-
-    // Save session to time_logs
-    await db.from("time_logs").insert([{
-        job_id:           jobId,
-        user_id:          currentUser.id,
-        user_name:        displayName,
-        clocked_in_at:    clockedInAt,
-        clocked_out_at:   now,
-        duration_seconds: sessionSeconds
-    }]);
-
-    // Update job record in Supabase
-    const { data, error } = await db
-        .from("Jobs")
-        .update({
-            clocked_out_at:     now,
-            total_time_seconds: newTotal
-        })
-        .eq("id", jobId)
-        .select()
-        .single();
-
-    if (!error && data) {
-        currentJob = data;
-        cacheJob(data);
-        updateClockUI(data);
-        loadTimeLogs(data.id);
-
-        const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
-        if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
-    }
-
-    return { error };
-}
-
 // === CLOCK BUTTON ===
 clockButton.addEventListener("click", async () => {
     if (!currentJob) return;
     clockButton.disabled = true;
 
-    if (currentJob.clocked_in_at && !currentJob.clocked_out_at) {
+    if (activeSession) {
         // — CLOCK OUT —
         await handleClockOut();
     } else {
         // — CLOCK IN —
-        const now   = new Date().toISOString();
-        const jobId = currentJob.id;
-
-        // Update local state immediately
-        const updatedJob = {
-            ...currentJob,
-            clocked_in_at:  now,
-            clocked_out_at: null
-        };
-        currentJob = updatedJob;
-        cacheJob(updatedJob);
-        updateClockUI(updatedJob);
-
-        // Rebuild card immediately
-        const card = jobCardsContainer.querySelector(`[data-id="${jobId}"]`);
-        if (card) jobCardsContainer.replaceChild(buildJobCard(updatedJob), card);
-
-        // Use RPC to force clocked_out_at = null in Supabase
-        // Standard .update({ clocked_out_at: null }) is silently ignored by PostgREST
-        const { data, error } = await db
-            .rpc("clock_in_job", {
-                job_id:     jobId,
-                clock_time: now
-            });
-
-        if (!error && data && data.length > 0) {
-            // RPC returns array — take first row
-            const confirmedJob = data[0];
-            // Always force clocked_out_at null on our side regardless of DB response
-            confirmedJob.clocked_out_at = null;
-            currentJob = confirmedJob;
-            cacheJob(confirmedJob);
-            updateClockUI(confirmedJob);
-
-            const updatedCard = jobCardsContainer.querySelector(`[data-id="${confirmedJob.id}"]`);
-            if (updatedCard) jobCardsContainer.replaceChild(buildJobCard(confirmedJob), updatedCard);
-        } else if (error) {
-            console.error("clock_in_job RPC failed:", error);
-            // Local state is already correct — user sees right UI
-            // Supabase will be fixed on next full load
-        }
+        await handleClockIn();
     }
 
     clockButton.disabled = false;
 });
+
+// === HANDLE CLOCK IN ===
+async function handleClockIn() {
+    const now         = new Date().toISOString();
+    const displayName = currentUser?.user_metadata?.display_name
+        || currentUser?.email?.split("@")[0]
+        || "Unknown";
+
+    // Insert open session into time_logs
+    const { data, error } = await db
+        .from("time_logs")
+        .insert([{
+            job_id:        currentJob.id,
+            user_id:       currentUser.id,
+            user_name:     displayName,
+            clocked_in_at: now,
+            clocked_out_at: null,
+            duration_seconds: 0
+        }])
+        .select()
+        .single();
+
+    if (error || !data) {
+        console.error("Clock in failed:", error);
+        clockButton.disabled = false;
+        return;
+    }
+
+    // Store the open session in memory
+    activeSession = data;
+    updateClockUI(activeSession);
+}
+
+// === HANDLE CLOCK OUT ===
+async function handleClockOut() {
+    const now            = new Date().toISOString();
+    const clockInTime    = new Date(activeSession.clocked_in_at);
+    const clockOutTime   = new Date(now);
+    const sessionSeconds = Math.floor((clockOutTime - clockInTime) / 1000);
+    const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
+
+    // Update the open session row with clock out time and duration
+    const { error: logError } = await db
+        .from("time_logs")
+        .update({
+            clocked_out_at:   now,
+            duration_seconds: sessionSeconds
+        })
+        .eq("id", activeSession.id);
+
+    if (logError) {
+        console.error("Clock out log update failed:", logError);
+        clockButton.disabled = false;
+        return;
+    }
+
+    // Update total time on the job
+    const { data: updatedJob, error: jobError } = await db
+        .from("Jobs")
+        .update({ total_time_seconds: newTotal })
+        .eq("id", currentJob.id)
+        .select()
+        .single();
+
+    if (!jobError && updatedJob) {
+        currentJob = updatedJob;
+        cacheJob(updatedJob);
+
+        const card = jobCardsContainer.querySelector(`[data-id="${updatedJob.id}"]`);
+        if (card) jobCardsContainer.replaceChild(buildJobCard(updatedJob), card);
+    } else {
+        // Update local total even if Supabase had an issue
+        currentJob = { ...currentJob, total_time_seconds: newTotal };
+        cacheJob(currentJob);
+    }
+
+    // Clear active session
+    activeSession = null;
+    updateClockUI(null);
+
+    // Refresh time logs
+    loadTimeLogs(currentJob.id);
+}
+
+// === HANDLE CLOCK OUT FOR COMPLETE JOB ===
+// Simplified version used when completing a job mid-session
+async function handleClockOutForComplete() {
+    const now            = new Date().toISOString();
+    const clockInTime    = new Date(activeSession.clocked_in_at);
+    const sessionSeconds = Math.floor((new Date(now) - clockInTime) / 1000);
+    const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
+
+    await db
+        .from("time_logs")
+        .update({
+            clocked_out_at:   now,
+            duration_seconds: sessionSeconds
+        })
+        .eq("id", activeSession.id);
+
+    await db
+        .from("Jobs")
+        .update({ total_time_seconds: newTotal })
+        .eq("id", currentJob.id);
+
+    currentJob    = { ...currentJob, total_time_seconds: newTotal };
+    activeSession = null;
+}
 
 // === LOAD TIME LOGS ===
 async function loadTimeLogs(jobId) {
@@ -654,20 +679,13 @@ saveEditButton.addEventListener("click", async () => {
         return;
     }
 
-    // Preserve clock state across edit save
-    const mergedJob = {
-        ...data,
-        clocked_in_at:  currentJob.clocked_in_at,
-        clocked_out_at: currentJob.clocked_out_at
-    };
+    currentJob = data;
+    cacheJob(data);
+    populateDetailView(data);
+    updateClockUI(activeSession);
 
-    currentJob = mergedJob;
-    cacheJob(mergedJob);
-    populateDetailView(mergedJob);
-    updateClockUI(mergedJob);
-
-    const card = jobCardsContainer.querySelector(`[data-id="${mergedJob.id}"]`);
-    if (card) jobCardsContainer.replaceChild(buildJobCard(mergedJob), card);
+    const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
+    if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
 
     jobDetailView.style.display = "block";
     jobDetailEdit.style.display = "none";
@@ -679,8 +697,8 @@ completeJobButton.addEventListener("click", async () => {
     if (!confirm("Mark this job as complete?")) return;
 
     // Auto clock out if currently clocked in
-    if (currentJob.clocked_in_at && !currentJob.clocked_out_at) {
-        await handleClockOut();
+    if (activeSession) {
+        await handleClockOutForComplete();
     }
 
     const { data, error } = await db
@@ -698,7 +716,7 @@ completeJobButton.addEventListener("click", async () => {
     currentJob = data;
     cacheJob(data);
     populateDetailView(data);
-    updateClockUI(data);
+    updateClockUI(null);
 
     const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
@@ -723,7 +741,7 @@ uncompleteJobButton.addEventListener("click", async () => {
     currentJob = data;
     cacheJob(data);
     populateDetailView(data);
-    updateClockUI(data);
+    updateClockUI(activeSession);
 
     const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
