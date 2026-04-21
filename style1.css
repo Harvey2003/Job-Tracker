@@ -726,3 +726,69 @@ body {
 #completeJobButton:active {
     background-color: #15803d !important;
 }
+
+/* === TIME LOGS === */
+.sectionSubTitle {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 2vw;
+}
+
+#timeLogsSection {
+    background-color: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    padding: 4vw 5vw;
+}
+
+.timeLogRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3vw 0;
+    border-bottom: 1px solid #f3f4f6;
+    gap: 2vw;
+}
+
+.timeLogRow:last-child {
+    border-bottom: none;
+}
+
+.timeLogDate {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #374151;
+    flex: 1;
+}
+
+.timeLogTimes {
+    display: flex;
+    flex-direction: column;
+    gap: 1vw;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.timeLogTimes i {
+    color: #f59e0b;
+    width: 14px;
+}
+
+.timeLogDuration {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #111827;
+    text-align: right;
+}
+
+/* Uncomplete button */
+#uncompleteJobButton {
+    background-color: #6b7280 !important;
+}
+
+#uncompleteJobButton:active {
+    background-color: #4b5563 !important;
+}
