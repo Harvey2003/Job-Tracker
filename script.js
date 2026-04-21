@@ -287,15 +287,38 @@ newJobButton.addEventListener("click", async () => {
 });
 
 // === OPEN JOB DETAIL ===
-function openJobDetail(job) {
-    currentJob = job;
-    populateDetailView(job);
-    updateClockUI(job);
-    loadTimeLogs(job.id);
+async function openJobDetail(job) {
     jobDetail.classList.add("active");
     jobDetailView.style.display = "block";
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
+
+    // Show loading state while we fetch fresh data
+    document.getElementById("jobDetailTitle").textContent = job.job_name;
+    document.getElementById("clockSection").style.display = "none";
+    timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading...</p>`;
+
+    // Always fetch fresh data from Supabase
+    const { data: freshJob, error } = await db
+        .from("Jobs")
+        .select("*")
+        .eq("id", job.id)
+        .single();
+
+    if (error || !freshJob) {
+        alert("Failed to load job details.");
+        closeJobDetail();
+        return;
+    }
+
+    currentJob = freshJob;
+    populateDetailView(freshJob);
+    updateClockUI(freshJob);
+    loadTimeLogs(freshJob.id);
+
+    // Update the card in the list with fresh data too
+    const card = jobCardsContainer.querySelector(`[data-id="${freshJob.id}"]`);
+    if (card) jobCardsContainer.replaceChild(buildJobCard(freshJob), card);
 }
 
 function closeJobDetail() {
