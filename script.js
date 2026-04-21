@@ -57,6 +57,42 @@ const timeLogsContainer   = document.getElementById("timeLogsContainer");
 let currentJob  = null;
 let currentUser = null;
 
+// === LOCAL STORAGE HELPERS ===
+function cacheJob(job) {
+    try {
+        localStorage.setItem(`job_${job.id}`, JSON.stringify(job));
+    } catch(e) {
+        console.warn("localStorage write failed:", e);
+    }
+}
+
+function getCachedJob(jobId) {
+    try {
+        const cached = localStorage.getItem(`job_${jobId}`);
+        return cached ? JSON.parse(cached) : null;
+    } catch(e) {
+        return null;
+    }
+}
+
+function cacheAllJobs(jobs) {
+    try {
+        jobs.forEach(job => cacheJob(job));
+        localStorage.setItem("all_job_ids", JSON.stringify(jobs.map(j => j.id)));
+    } catch(e) {
+        console.warn("localStorage write failed:", e);
+    }
+}
+
+function getCachedAllJobs() {
+    try {
+        const ids = JSON.parse(localStorage.getItem("all_job_ids") || "[]");
+        return ids.map(id => getCachedJob(id)).filter(Boolean);
+    } catch(e) {
+        return [];
+    }
+}
+
 // === AUTH ===
 db.auth.onAuthStateChange((event, session) => {
     if (session) {
@@ -113,6 +149,7 @@ loginPassword.addEventListener("keydown", (e) => {
 logoutButton.addEventListener("click", async () => {
     await db.auth.signOut();
     currentUser = null;
+    currentJob  = null;
     closeNav();
 });
 
@@ -195,10 +232,25 @@ async function loadJobs() {
         .select("*")
         .order("created_at", { ascending: false });
 
-    if (error) {
-        jobCardsContainer.innerHTML = `<p class="emptyState" style="color:#f87171;">Failed to load jobs.</p>`;
+    if (error || !jobs) {
+        // Fall back to cached jobs if offline
+        const cachedJobs = getCachedAllJobs();
+        if (cachedJobs.length > 0) {
+            jobCardsContainer.innerHTML = "";
+            cachedJobs.forEach(job => jobCardsContainer.appendChild(buildJobCard(job)));
+            jobCardsContainer.insertAdjacentHTML("afterbegin", `
+                <p class="emptyState" style="color:#f59e0b; margin-bottom:2vw;">
+                    <i class="fa-solid fa-wifi-slash"></i> Offline — showing cached data
+                </p>
+            `);
+        } else {
+            jobCardsContainer.innerHTML = `<p class="emptyState" style="color:#f87171;">Failed to load jobs.</p>`;
+        }
         return;
     }
+
+    // Cache all jobs locally
+    cacheAllJobs(jobs);
 
     jobCardsContainer.innerHTML = "";
 
@@ -272,6 +324,9 @@ newJobButton.addEventListener("click", async () => {
         return;
     }
 
+    // Cache the new job
+    cacheJob(data);
+
     document.getElementById("inputJobName").value    = "";
     document.getElementById("inputAddress").value    = "";
     document.getElementById("inputClientName").value = "";
@@ -292,9 +347,27 @@ async function openJobDetail(jobId) {
     jobDetailView.style.display = "block";
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
-    timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading...</p>`;
 
-    // Always fetch fresh data from Supabase
+    // If we already have this job in memory, show it instantly
+    if (currentJob && currentJob.id === jobId) {
+        populateDetailView(currentJob);
+        updateClockUI(currentJob);
+        loadTimeLogs(currentJob.id);
+        return;
+    }
+
+    // Try to show cached version instantly while fetching fresh
+    const cachedJob = getCachedJob(jobId);
+    if (cachedJob) {
+        currentJob = cachedJob;
+        populateDetailView(cachedJob);
+        updateClockUI(cachedJob);
+        loadTimeLogs(cachedJob.id);
+    } else {
+        timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading...</p>`;
+    }
+
+    // Always fetch fresh from Supabase in background
     const { data: freshJob, error } = await db
         .from("Jobs")
         .select("*")
@@ -302,20 +375,30 @@ async function openJobDetail(jobId) {
         .single();
 
     if (error || !freshJob) {
-        alert("Failed to load job details.");
-        closeJobDetail();
+        // If we already showed cached data, that's fine — stay on it
+        if (!currentJob) {
+            alert("Failed to load job details.");
+            closeJobDetail();
+        }
         return;
     }
 
+    // Update with fresh data
     currentJob = freshJob;
+    cacheJob(freshJob);
     populateDetailView(freshJob);
     updateClockUI(freshJob);
     loadTimeLogs(freshJob.id);
+
+    // Keep card in list in sync
+    const card = jobCardsContainer.querySelector(`[data-id="${freshJob.id}"]`);
+    if (card) jobCardsContainer.replaceChild(buildJobCard(freshJob), card);
 }
 
+// === CLOSE JOB DETAIL ===
 function closeJobDetail() {
     jobDetail.classList.remove("active");
-    currentJob = null;
+    // Do NOT null out currentJob — keep it in memory so reopening is instant
 }
 
 jobDetailBack.addEventListener("click", closeJobDetail);
@@ -375,6 +458,16 @@ async function handleClockOut() {
 
     const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "Unknown";
 
+    // Update local state immediately
+    const updatedJob = {
+        ...currentJob,
+        clocked_out_at:     now,
+        total_time_seconds: newTotal
+    };
+    currentJob = updatedJob;
+    cacheJob(updatedJob);
+    updateClockUI(updatedJob);
+
     // Save session to time_logs
     await db.from("time_logs").insert([{
         job_id:           currentJob.id,
@@ -385,7 +478,7 @@ async function handleClockOut() {
         duration_seconds: sessionSeconds
     }]);
 
-    // Update job record
+    // Update job record in Supabase
     const { data, error } = await db
         .from("Jobs")
         .update({
@@ -396,8 +489,9 @@ async function handleClockOut() {
         .select()
         .single();
 
-    if (!error) {
+    if (!error && data) {
         currentJob = data;
+        cacheJob(data);
         updateClockUI(data);
         loadTimeLogs(data.id);
 
@@ -418,6 +512,21 @@ clockButton.addEventListener("click", async () => {
     } else {
         const now = new Date().toISOString();
 
+        // Update local state immediately — don't wait for Supabase
+        const updatedJob = {
+            ...currentJob,
+            clocked_in_at:  now,
+            clocked_out_at: null
+        };
+        currentJob = updatedJob;
+        cacheJob(updatedJob);
+        updateClockUI(updatedJob);
+
+        // Rebuild card immediately with new state
+        const card = jobCardsContainer.querySelector(`[data-id="${updatedJob.id}"]`);
+        if (card) jobCardsContainer.replaceChild(buildJobCard(updatedJob), card);
+
+        // Then sync to Supabase in background
         const { data, error } = await db
             .from("Jobs")
             .update({
@@ -428,24 +537,10 @@ clockButton.addEventListener("click", async () => {
             .select()
             .single();
 
-        if (error) {
-            alert("Clock in failed: " + error.message);
-            clockButton.disabled = false;
-            return;
+        if (!error && data) {
+            currentJob = data;
+            cacheJob(data);
         }
-
-        if (!data) {
-            alert("Clock in returned no data — RLS may be blocking the update.");
-            clockButton.disabled = false;
-            return;
-        }
-
-        currentJob = data;
-        updateClockUI(data);
-
-        // Rebuild card with fresh clocked-in data
-        const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
-        if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
     }
 
     clockButton.disabled = false;
@@ -547,6 +642,7 @@ saveEditButton.addEventListener("click", async () => {
     }
 
     currentJob = data;
+    cacheJob(data);
     populateDetailView(data);
 
     const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
@@ -578,6 +674,7 @@ completeJobButton.addEventListener("click", async () => {
     }
 
     currentJob = data;
+    cacheJob(data);
     populateDetailView(data);
 
     const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
@@ -601,6 +698,7 @@ uncompleteJobButton.addEventListener("click", async () => {
     }
 
     currentJob = data;
+    cacheJob(data);
     populateDetailView(data);
     updateClockUI(data);
 
