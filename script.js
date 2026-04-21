@@ -483,27 +483,36 @@ async function handleClockIn() {
         || currentUser?.email?.split("@")[0]
         || "Unknown";
 
-    // Insert open session into time_logs
+    console.log("Attempting clock in with:", {
+        job_id:          currentJob.id,
+        user_id:         currentUser.id,
+        user_name:       displayName,
+        clocked_in_at:   now,
+        clocked_out_at:  null,
+        duration_seconds: 0
+    });
+
     const { data, error } = await db
         .from("time_logs")
         .insert([{
-            job_id:        currentJob.id,
-            user_id:       currentUser.id,
-            user_name:     displayName,
-            clocked_in_at: now,
-            clocked_out_at: null,
+            job_id:           currentJob.id,
+            user_id:          currentUser.id,
+            user_name:        displayName,
+            clocked_in_at:    now,
+            clocked_out_at:   null,
             duration_seconds: 0
         }])
         .select()
         .single();
 
+    console.log("Clock in result — data:", data, "error:", error);
+
     if (error || !data) {
-        console.error("Clock in failed:", error);
+        alert("Clock in failed: " + (error?.message || "no data returned"));
         clockButton.disabled = false;
         return;
     }
 
-    // Store the open session in memory
     activeSession = data;
     updateClockUI(activeSession);
 }
