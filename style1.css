@@ -757,11 +757,22 @@ body {
     border-bottom: none;
 }
 
-.timeLogDate {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #374151;
+.timeLogLeft {
+    display: flex;
+    flex-direction: column;
+    gap: 1vw;
     flex: 1;
+}
+
+.timeLogName {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.timeLogDate {
+    font-size: 0.75rem;
+    color: #9ca3af;
 }
 
 .timeLogTimes {
@@ -771,6 +782,7 @@ body {
     font-size: 0.75rem;
     color: #6b7280;
 }
+
 
 .timeLogTimes i {
     color: #f59e0b;

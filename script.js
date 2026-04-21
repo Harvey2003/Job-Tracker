@@ -54,7 +54,8 @@ const saveEditButton      = document.getElementById("saveEditButton");
 const timeLogsContainer   = document.getElementById("timeLogsContainer");
 
 // === STATE ===
-let currentJob = null;
+let currentJob  = null;
+let currentUser = null;
 
 // === AUTH ===
 db.auth.onAuthStateChange((event, session) => {
@@ -73,8 +74,10 @@ function showLogin() {
 }
 
 function showApp(user) {
+    currentUser = user;
     loginScreen.classList.remove("active");
-    welcomeSub.textContent = user.email.split("@")[0];
+    const displayName = user.user_metadata?.display_name || user.email.split("@")[0];
+    welcomeSub.textContent = displayName;
     loadJobs();
 }
 
@@ -109,6 +112,7 @@ loginPassword.addEventListener("keydown", (e) => {
 // === LOGOUT ===
 logoutButton.addEventListener("click", async () => {
     await db.auth.signOut();
+    currentUser = null;
     closeNav();
 });
 
@@ -320,11 +324,9 @@ function populateDetailView(job) {
         </span>
     `;
 
-    // Toggle action buttons
     completeJobButton.style.display   = isCompleted ? "none" : "flex";
     uncompleteJobButton.style.display = isCompleted ? "flex" : "none";
 
-    // Hide clock section for completed jobs
     document.getElementById("clockSection").style.display = isCompleted ? "none" : "flex";
 }
 
@@ -399,7 +401,6 @@ saveEditButton.addEventListener("click", async () => {
 completeJobButton.addEventListener("click", async () => {
     if (!confirm("Mark this job as complete?")) return;
 
-    // Auto clock out if currently clocked in
     if (currentJob.clocked_in_at && !currentJob.clocked_out_at) {
         await handleClockOut();
     }
@@ -476,9 +477,13 @@ async function handleClockOut() {
     const sessionSeconds = Math.floor((clockOutTime - clockInTime) / 1000);
     const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
 
-    // Save individual session to time_logs
+    const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "Unknown";
+
+    // Save session to time_logs
     await db.from("time_logs").insert([{
         job_id:           currentJob.id,
+        user_id:          currentUser.id,
+        user_name:        displayName,
         clocked_in_at:    currentJob.clocked_in_at,
         clocked_out_at:   now,
         duration_seconds: sessionSeconds
@@ -536,59 +541,4 @@ clockButton.addEventListener("click", async () => {
 });
 
 // === LOAD TIME LOGS ===
-async function loadTimeLogs(jobId) {
-    timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading sessions...</p>`;
-
-    const { data: logs, error } = await db
-        .from("time_logs")
-        .select("*")
-        .eq("job_id", jobId)
-        .order("clocked_in_at", { ascending: false });
-
-    if (error || !logs || logs.length === 0) {
-        timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">No sessions logged yet.</p>`;
-        return;
-    }
-
-    timeLogsContainer.innerHTML = "";
-
-    logs.forEach(log => {
-        const inTime  = new Date(log.clocked_in_at);
-        const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
-
-        const row = document.createElement("div");
-        row.classList.add("timeLogRow");
-        row.innerHTML = `
-            <div class="timeLogDate">${formatDate(inTime)}</div>
-            <div class="timeLogTimes">
-                <span><i class="fa-solid fa-arrow-right-to-bracket"></i> ${formatTime(inTime)}</span>
-                <span><i class="fa-solid fa-arrow-right-from-bracket"></i> ${outTime ? formatTime(outTime) : "—"}</span>
-            </div>
-            <div class="timeLogDuration">${formatDuration(log.duration_seconds || 0)}</div>
-        `;
-        timeLogsContainer.appendChild(row);
-    });
-}
-
-// === HELPERS ===
-function capitalise(str) {
-    if (!str) return "";
-    return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function formatTime(date) {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatDate(date) {
-    return date.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
-}
-
-function formatDuration(totalSeconds) {
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
-    if (h > 0) return `${h}h ${m}m`;
-    if (m > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-}
+async function loadTimeL<span class="ml-2" /><span class="inline-block w-3 h-3 rounded-full bg-neutral-a12 align-middle mb-[0.1rem]" />
