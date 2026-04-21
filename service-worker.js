@@ -1,9 +1,9 @@
 const CACHE_NAME = "jobtrack-v1";
 const FILES_TO_CACHE = [
-    "/",
-    "/index.html",
-    "/style1.css",
-    "/script.js"
+    "./",
+    "./index.html",
+    "./style1.css",
+    "./script.js"
 ];
 
 self.addEventListener("install", (e) => {
