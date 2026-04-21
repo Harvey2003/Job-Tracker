@@ -61,6 +61,7 @@ let currentUser = null;
 function cacheJob(job) {
     try {
         localStorage.setItem(`job_${job.id}`, JSON.stringify(job));
+        console.log(`[cache] Saved job_${job.id} | clocked_in_at: ${job.clocked_in_at} | clocked_out_at: ${job.clocked_out_at}`);
     } catch(e) {
         console.warn("localStorage write failed:", e);
     }
@@ -233,7 +234,6 @@ async function loadJobs() {
         .order("created_at", { ascending: false });
 
     if (error || !jobs) {
-        // Fall back to cached jobs if offline
         const cachedJobs = getCachedAllJobs();
         if (cachedJobs.length > 0) {
             jobCardsContainer.innerHTML = "";
@@ -249,9 +249,7 @@ async function loadJobs() {
         return;
     }
 
-    // Cache all jobs locally
     cacheAllJobs(jobs);
-
     jobCardsContainer.innerHTML = "";
 
     if (jobs.length === 0) {
@@ -324,7 +322,6 @@ newJobButton.addEventListener("click", async () => {
         return;
     }
 
-    // Cache the new job
     cacheJob(data);
 
     document.getElementById("inputJobName").value    = "";
@@ -348,15 +345,16 @@ async function openJobDetail(jobId) {
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 
-    // If we already have this job in memory, show it instantly
-    if (currentJob && currentJob.id === jobId) {
+    // Only use memory cache if same job AND not currently clocked in
+    // If clocked in, always fetch fresh to guarantee accurate state
+    if (currentJob && currentJob.id === jobId && !currentJob.clocked_in_at) {
         populateDetailView(currentJob);
         updateClockUI(currentJob);
         loadTimeLogs(currentJob.id);
         return;
     }
 
-    // Try to show cached version instantly while fetching fresh
+    // Show cached version instantly while fetching fresh from Supabase
     const cachedJob = getCachedJob(jobId);
     if (cachedJob) {
         currentJob = cachedJob;
@@ -367,7 +365,7 @@ async function openJobDetail(jobId) {
         timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading...</p>`;
     }
 
-    // Always fetch fresh from Supabase in background
+    // Always fetch fresh from Supabase
     const { data: freshJob, error } = await db
         .from("Jobs")
         .select("*")
@@ -375,7 +373,6 @@ async function openJobDetail(jobId) {
         .single();
 
     if (error || !freshJob) {
-        // If we already showed cached data, that's fine — stay on it
         if (!currentJob) {
             alert("Failed to load job details.");
             closeJobDetail();
@@ -383,14 +380,14 @@ async function openJobDetail(jobId) {
         return;
     }
 
-    // Update with fresh data
+    // Update everything with confirmed server data
     currentJob = freshJob;
     cacheJob(freshJob);
     populateDetailView(freshJob);
     updateClockUI(freshJob);
     loadTimeLogs(freshJob.id);
 
-    // Keep card in list in sync
+    // Keep job card in list in sync
     const card = jobCardsContainer.querySelector(`[data-id="${freshJob.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(freshJob), card);
 }
@@ -398,7 +395,7 @@ async function openJobDetail(jobId) {
 // === CLOSE JOB DETAIL ===
 function closeJobDetail() {
     jobDetail.classList.remove("active");
-    // Do NOT null out currentJob — keep it in memory so reopening is instant
+    // Do NOT null out currentJob — keep it in memory
 }
 
 jobDetailBack.addEventListener("click", closeJobDetail);
@@ -422,8 +419,8 @@ function populateDetailView(job) {
         </span>
     `;
 
-    completeJobButton.style.display   = isCompleted ? "none" : "flex";
-    uncompleteJobButton.style.display = isCompleted ? "flex" : "none";
+    completeJobButton.style.display   = isCompleted ? "none"  : "flex";
+    uncompleteJobButton.style.display = isCompleted ? "flex"  : "none";
     document.getElementById("clockSection").style.display = isCompleted ? "none" : "flex";
 }
 
@@ -456,7 +453,12 @@ async function handleClockOut() {
     const sessionSeconds = Math.floor((clockOutTime - clockInTime) / 1000);
     const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
 
-    const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "Unknown";
+    const displayName = currentUser?.user_metadata?.display_name
+        || currentUser?.email?.split("@")[0]
+        || "Unknown";
+
+    // Capture clock-in time before we overwrite currentJob
+    const clockedInAt = currentJob.clocked_in_at;
 
     // Update local state immediately
     const updatedJob = {
@@ -473,7 +475,7 @@ async function handleClockOut() {
         job_id:           currentJob.id,
         user_id:          currentUser.id,
         user_name:        displayName,
-        clocked_in_at:    currentJob.clocked_in_at,
+        clocked_in_at:    clockedInAt,
         clocked_out_at:   now,
         duration_seconds: sessionSeconds
     }]);
@@ -508,8 +510,10 @@ clockButton.addEventListener("click", async () => {
     clockButton.disabled = true;
 
     if (currentJob.clocked_in_at && !currentJob.clocked_out_at) {
+        // — CLOCK OUT —
         await handleClockOut();
     } else {
+        // — CLOCK IN —
         const now = new Date().toISOString();
 
         // Update local state immediately — don't wait for Supabase
@@ -522,11 +526,11 @@ clockButton.addEventListener("click", async () => {
         cacheJob(updatedJob);
         updateClockUI(updatedJob);
 
-        // Rebuild card immediately with new state
+        // Rebuild card immediately
         const card = jobCardsContainer.querySelector(`[data-id="${updatedJob.id}"]`);
         if (card) jobCardsContainer.replaceChild(buildJobCard(updatedJob), card);
 
-        // Then sync to Supabase in background
+        // Sync to Supabase in background
         const { data, error } = await db
             .from("Jobs")
             .update({
@@ -538,8 +542,15 @@ clockButton.addEventListener("click", async () => {
             .single();
 
         if (!error && data) {
-            currentJob = data;
-            cacheJob(data);
+            // Merge defensively — trust local clocked_in_at if Supabase returns null
+            const mergedJob = {
+                ...data,
+                clocked_in_at:  data.clocked_in_at  ?? now,
+                clocked_out_at: data.clocked_out_at !== undefined ? data.clocked_out_at : null
+            };
+            currentJob = mergedJob;
+            cacheJob(mergedJob);
+            updateClockUI(mergedJob);
         }
     }
 
@@ -644,6 +655,7 @@ saveEditButton.addEventListener("click", async () => {
     currentJob = data;
     cacheJob(data);
     populateDetailView(data);
+    updateClockUI(data);
 
     const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
@@ -657,6 +669,7 @@ saveEditButton.addEventListener("click", async () => {
 completeJobButton.addEventListener("click", async () => {
     if (!confirm("Mark this job as complete?")) return;
 
+    // Auto clock out if currently clocked in
     if (currentJob.clocked_in_at && !currentJob.clocked_out_at) {
         await handleClockOut();
     }
@@ -676,6 +689,7 @@ completeJobButton.addEventListener("click", async () => {
     currentJob = data;
     cacheJob(data);
     populateDetailView(data);
+    updateClockUI(data);
 
     const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);

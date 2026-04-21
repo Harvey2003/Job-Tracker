@@ -112,6 +112,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 100;
+    padding-top: env(safe-area-inset-top);
 }
 
 #companyName {
@@ -154,7 +155,8 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
-#openCloseNav:hover, #openCloseNav:active {
+#openCloseNav:hover,
+#openCloseNav:active {
     background-color: #1f2937;
     color: #f9fafb;
 }
@@ -222,7 +224,8 @@ body {
     min-height: 52px;
 }
 
-.navItem:hover, .navItem:active {
+.navItem:hover,
+.navItem:active {
     background-color: #1f2937;
     color: #f9fafb;
 }
@@ -240,13 +243,14 @@ body {
     color: inherit;
 }
 
-/* Logout item red tint */
+/* Logout item */
 #logoutButton {
     margin-top: auto;
     color: #6b7280;
 }
 
-#logoutButton:hover, #logoutButton:active {
+#logoutButton:hover,
+#logoutButton:active {
     background-color: #1f2937;
     color: #f87171;
 }
@@ -273,7 +277,8 @@ body {
     transition: all 0.15s ease;
 }
 
-#addJob:hover, #addJob:active {
+#addJob:hover,
+#addJob:active {
     border-color: #f59e0b;
     background-color: #fffbeb;
 }
@@ -482,7 +487,8 @@ body {
     background-color: #ffffff;
 }
 
-#startDate, #editStartDate {
+#startDate,
+#editStartDate {
     color: #111827;
     cursor: pointer;
 }
@@ -782,7 +788,6 @@ body {
     font-size: 0.75rem;
     color: #6b7280;
 }
-
 
 .timeLogTimes i {
     color: #f59e0b;
