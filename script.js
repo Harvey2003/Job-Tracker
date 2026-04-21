@@ -345,8 +345,8 @@ async function openJobDetail(jobId) {
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 
-    // Only use memory cache if same job AND not currently clocked in
-    // If clocked in, always fetch fresh to guarantee accurate state
+    // Only use memory if same job AND not clocked in
+    // If clocked in always go to Supabase for truth
     if (currentJob && currentJob.id === jobId && !currentJob.clocked_in_at) {
         populateDetailView(currentJob);
         updateClockUI(currentJob);
@@ -354,7 +354,7 @@ async function openJobDetail(jobId) {
         return;
     }
 
-    // Show cached version instantly while fetching fresh from Supabase
+    // Show cached version instantly while fetching fresh
     const cachedJob = getCachedJob(jobId);
     if (cachedJob) {
         currentJob = cachedJob;
@@ -380,14 +380,13 @@ async function openJobDetail(jobId) {
         return;
     }
 
-    // Update everything with confirmed server data
+    // Update with confirmed server data
     currentJob = freshJob;
     cacheJob(freshJob);
     populateDetailView(freshJob);
     updateClockUI(freshJob);
     loadTimeLogs(freshJob.id);
 
-    // Keep job card in list in sync
     const card = jobCardsContainer.querySelector(`[data-id="${freshJob.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(freshJob), card);
 }
@@ -395,7 +394,6 @@ async function openJobDetail(jobId) {
 // === CLOSE JOB DETAIL ===
 function closeJobDetail() {
     jobDetail.classList.remove("active");
-    // Do NOT null out currentJob — keep it in memory
 }
 
 jobDetailBack.addEventListener("click", closeJobDetail);
@@ -457,8 +455,9 @@ async function handleClockOut() {
         || currentUser?.email?.split("@")[0]
         || "Unknown";
 
-    // Capture clock-in time before we overwrite currentJob
+    // Capture clock-in time before overwriting currentJob
     const clockedInAt = currentJob.clocked_in_at;
+    const jobId       = currentJob.id;
 
     // Update local state immediately
     const updatedJob = {
@@ -472,7 +471,7 @@ async function handleClockOut() {
 
     // Save session to time_logs
     await db.from("time_logs").insert([{
-        job_id:           currentJob.id,
+        job_id:           jobId,
         user_id:          currentUser.id,
         user_name:        displayName,
         clocked_in_at:    clockedInAt,
@@ -487,7 +486,7 @@ async function handleClockOut() {
             clocked_out_at:     now,
             total_time_seconds: newTotal
         })
-        .eq("id", currentJob.id)
+        .eq("id", jobId)
         .select()
         .single();
 
@@ -514,9 +513,10 @@ clockButton.addEventListener("click", async () => {
         await handleClockOut();
     } else {
         // — CLOCK IN —
-        const now = new Date().toISOString();
+        const now   = new Date().toISOString();
+        const jobId = currentJob.id;
 
-        // Update local state immediately — don't wait for Supabase
+        // Update local state immediately
         const updatedJob = {
             ...currentJob,
             clocked_in_at:  now,
@@ -527,30 +527,32 @@ clockButton.addEventListener("click", async () => {
         updateClockUI(updatedJob);
 
         // Rebuild card immediately
-        const card = jobCardsContainer.querySelector(`[data-id="${updatedJob.id}"]`);
+        const card = jobCardsContainer.querySelector(`[data-id="${jobId}"]`);
         if (card) jobCardsContainer.replaceChild(buildJobCard(updatedJob), card);
 
-        // Sync to Supabase in background
+        // Use RPC to force clocked_out_at = null in Supabase
+        // Standard .update({ clocked_out_at: null }) is silently ignored by PostgREST
         const { data, error } = await db
-            .from("Jobs")
-            .update({
-                clocked_in_at:  now,
-                clocked_out_at: null
-            })
-            .eq("id", currentJob.id)
-            .select()
-            .single();
+            .rpc("clock_in_job", {
+                job_id:     jobId,
+                clock_time: now
+            });
 
-        if (!error && data) {
-            // Merge defensively — trust local clocked_in_at if Supabase returns null
-            const mergedJob = {
-                ...data,
-                clocked_in_at:  data.clocked_in_at  ?? now,
-                clocked_out_at: data.clocked_out_at !== undefined ? data.clocked_out_at : null
-            };
-            currentJob = mergedJob;
-            cacheJob(mergedJob);
-            updateClockUI(mergedJob);
+        if (!error && data && data.length > 0) {
+            // RPC returns array — take first row
+            const confirmedJob = data[0];
+            // Always force clocked_out_at null on our side regardless of DB response
+            confirmedJob.clocked_out_at = null;
+            currentJob = confirmedJob;
+            cacheJob(confirmedJob);
+            updateClockUI(confirmedJob);
+
+            const updatedCard = jobCardsContainer.querySelector(`[data-id="${confirmedJob.id}"]`);
+            if (updatedCard) jobCardsContainer.replaceChild(buildJobCard(confirmedJob), updatedCard);
+        } else if (error) {
+            console.error("clock_in_job RPC failed:", error);
+            // Local state is already correct — user sees right UI
+            // Supabase will be fixed on next full load
         }
     }
 
@@ -652,13 +654,20 @@ saveEditButton.addEventListener("click", async () => {
         return;
     }
 
-    currentJob = data;
-    cacheJob(data);
-    populateDetailView(data);
-    updateClockUI(data);
+    // Preserve clock state across edit save
+    const mergedJob = {
+        ...data,
+        clocked_in_at:  currentJob.clocked_in_at,
+        clocked_out_at: currentJob.clocked_out_at
+    };
 
-    const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
-    if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
+    currentJob = mergedJob;
+    cacheJob(mergedJob);
+    populateDetailView(mergedJob);
+    updateClockUI(mergedJob);
+
+    const card = jobCardsContainer.querySelector(`[data-id="${mergedJob.id}"]`);
+    if (card) jobCardsContainer.replaceChild(buildJobCard(mergedJob), card);
 
     jobDetailView.style.display = "block";
     jobDetailEdit.style.display = "none";

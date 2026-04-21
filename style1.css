@@ -69,7 +69,6 @@ body {
     margin-top: 1vw;
 }
 
-/* Login inputs dark themed */
 #loginEmail,
 #loginPassword {
     background-color: #111827;
@@ -88,7 +87,6 @@ body {
     color: #4b5563;
 }
 
-/* Login button amber */
 #loginButton {
     background-color: #f59e0b;
     color: #111827;
@@ -106,13 +104,13 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 0 5vw;
+    padding-top: env(safe-area-inset-top);
     height: 64px;
     background-color: #111827;
     border-bottom: 1px solid #1f2937;
     position: sticky;
     top: 0;
     z-index: 100;
-    padding-top: env(safe-area-inset-top);
 }
 
 #companyName {
@@ -243,7 +241,6 @@ body {
     color: inherit;
 }
 
-/* Logout item */
 #logoutButton {
     margin-top: auto;
     color: #6b7280;
@@ -390,7 +387,6 @@ body {
     box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.15);
 }
 
-/* Drag handle visual */
 #formCard::before {
     content: '';
     display: block;
@@ -524,7 +520,6 @@ body {
     background-color: #374151;
 }
 
-/* Create job button amber */
 #newJobButton {
     background-color: #f59e0b;
     color: #111827;
@@ -712,7 +707,6 @@ body {
     padding: 5vw;
 }
 
-/* Save button amber */
 #saveEditButton {
     background-color: #f59e0b;
     color: #111827;
