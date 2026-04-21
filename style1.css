@@ -1,0 +1,414 @@
+/* === GLOBAL === */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: #f9fafb;
+    color: #111827;
+    min-height: 100dvh;
+    overflow-x: hidden;
+}
+
+/* === TOP NAV === */
+#topNavContainer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 5vw;
+    height: 64px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+#companyName {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
+    letter-spacing: -0.5px;
+}
+
+#welcomeMessage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#welcomeTitle {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    font-weight: 400;
+}
+
+#welcomeSub {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+#openCloseNav {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    background-color: transparent;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+    #openCloseNav:hover, #openCloseNav:active {
+        background-color: #f3f4f6;
+        color: #111827;
+    }
+
+/* === OVERLAY === */
+#navOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 200;
+    backdrop-filter: blur(2px);
+}
+
+    #navOverlay.active {
+        display: block;
+    }
+
+/* === SIDEBAR === */
+#navBar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 75vw;
+    height: 100dvh;
+    background-color: #ffffff;
+    border-right: 1px solid #e5e7eb;
+    padding: 5vw;
+    z-index: 300;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 2vw;
+}
+
+    #navBar.open {
+        transform: translateX(0);
+    }
+
+#navHeader {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0 3vw;
+    margin-bottom: 1vw;
+    margin-top: 8vw;
+}
+
+/* === NAV ITEMS === */
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 3.5vw;
+    padding: 3.5vw;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #6b7280;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 52px;
+}
+
+    .navItem:hover, .navItem:active {
+        background-color: #f3f4f6;
+        color: #111827;
+    }
+
+    .navItem.active {
+        background-color: #f3f4f6;
+        color: #111827;
+        font-weight: 600;
+    }
+
+.navIcon {
+    font-size: 1rem;
+    width: 20px;
+    text-align: center;
+    color: inherit;
+}
+
+/* === MAIN CONTENT === */
+#jobLists {
+    padding: 6vw 5vw;
+    display: flex;
+    flex-direction: column;
+    gap: 3vw;
+}
+
+.newJob {
+    justify-self: center;
+    margin: 10px;
+
+    font-weight: bold;
+}
+
+/* === ADD JOB CARD === */
+#addJob {
+    border: 2px dashed #e5e7eb;
+    background-color: transparent;
+    transition: all 0.15s ease;
+    margin-bottom: 0;
+}
+
+    #addJob:hover, #addJob:active {
+        border-color: #9ca3af;
+        background-color: #f9fafb;
+    }
+
+#addJobInner {
+    display: flex;
+    align-items: center;
+    gap: 4vw;
+}
+
+#addJobIcon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background-color: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+#addJobTitle {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5vw;
+}
+
+#addJobSub {
+    font-size: 0.78rem;
+    color: #9ca3af;
+    font-weight: 400;
+}
+#sectionTitle {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 2vw;
+}
+
+/* === JOB CARDS === */
+.jobCard {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 4.5vw;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+    .jobCard:active {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+    }
+
+.jobCardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5vw;
+}
+
+.jobName {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.jobSub {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    font-weight: 400;
+}
+
+/* === STATUS BADGE === */
+.statusBadge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.3em 0.8em;
+    border-radius: 20px;
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+
+/* === NEW JOB FORM === */
+#newJobForm {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 400;
+    align-items: center;
+    justify-content: center;
+}
+
+    #newJobForm.active {
+        display: flex;
+    }
+
+#formCard {
+    background-color: #ffffff;
+    width: 90vw;
+    max-height: 88dvh;
+    border-radius: 20px;
+    padding: 6vw;
+    padding-top: 7vw;
+    display: flex;
+    flex-direction: column;
+    gap: 1vw;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+#formTitleRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3vw;
+}
+
+#formTitle {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+#formClose {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background-color: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    cursor: pointer;
+    font-size: 0.9rem;
+    -webkit-tap-highlight-color: transparent;
+}
+
+    #formClose:active {
+        background-color: #e5e7eb;
+    }
+
+/* === FORM FIELDS === */
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5vw;
+    margin-bottom: 3vw;
+}
+
+.formHeader {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.newJobInput {
+    height: 48px;
+    font-size: 0.95rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0 4vw;
+    background-color: #f9fafb;
+    color: #111827;
+    outline: none;
+    transition: border 0.15s ease;
+}
+
+    .newJobInput:focus {
+        border-color: #9ca3af;
+        background-color: #ffffff;
+    }
+
+/* === FORM BUTTON === */
+.formButton {
+    width: 100%;
+    height: 52px;
+    border: none;
+    border-radius: 12px;
+    background-color: #111827;
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 2vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2vw;
+    transition: background-color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+    .formButton:active {
+        background-color: #374151;
+    }
+
+/* === NOTES TEXTAREA === */
+#notesInput {
+    height: 28vw;
+    font-size: 0.95rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 3vw 4vw;
+    background-color: #f9fafb;
+    color: #111827;
+    outline: none;
+    transition: border 0.15s ease;
+    resize: none;
+    font-family: 'Inter', sans-serif;
+}
+
+    #notesInput:focus {
+        border-color: #9ca3af;
+        background-color: #ffffff;
+    }
+
+/* === DATE INPUT === */
+#startDate {
+    color: #111827;
+    cursor: pointer;
+}
+
+    #startDate::-webkit-calendar-picker-indicator {
+        opacity: 0.5;
+        cursor: pointer;
+    }

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="JobTrack" />
+    <meta name="theme-color" content="#111827" />
+
+    <title>JobTrack</title>
+
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <link rel="stylesheet" href="style1.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <!-- Android PWA -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="JobTrack" />
+</head>
+<body>
+    <!-- TOP NAV -->
+    <div id="topNavContainer">
+        <span id="companyName">ElectricM8</span>
+        <div id="welcomeMessage">
+            <p id="welcomeTitle">Welcome back</p>
+            <p id="welcomeSub">Users Name</p>
+        </div>
+        <div id="openCloseNav">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+    </div>
+
+    <!-- SIDEBAR NAVIGATION -->
+    <div id="navOverlay"></div>
+    <div id="navBar">
+        <p id="navHeader">Menu</p>
+        <div class="navItem" id="jobsSection">
+            <i class="fa-solid fa-briefcase navIcon"></i>
+            <span>Jobs</span>
+        </div>
+        <div class="navItem" id="createJobSection">
+            <i class="fa-solid fa-plus navIcon"></i>
+            <span>Create Job</span>
+        </div>
+    </div>
+
+<!-- MAIN CONTENT -->
+<div id="jobLists">
+    <div class="jobCard" id="addJob">
+        <div id="addJobInner">
+            <div id="addJobIcon">
+                <i class="fa-solid fa-plus"></i>
+            </div>
+            <div id="addJobText">
+                <p id="addJobTitle">New Job</p>
+                <p id="addJobSub">Tap to create a new job</p>
+            </div>
+        </div>
+    </div>
+
+    <p id="sectionTitle">Active Jobs</p>
+    <div class="jobCard">
+        <div class="jobCardHeader">
+            <p class="jobName">Job entry here</p>
+            <span class="statusBadge">Active</span>
+        </div>
+        <p class="jobSub">Client name · Due date</p>
+    </div>
+</div>
+
+<!-- NEW JOB FORM -->
+<div id="newJobForm">
+    <div id="formCard">
+        <div id="formTitleRow">
+            <p id="formTitle">Create New Job</p>
+            <div id="formClose"><i class="fa-solid fa-xmark"></i></div>
+        </div>
+
+        <div class="formGroup">
+            <label class="formHeader">Job Name</label>
+            <input placeholder="e.g. Kitchen Rewire" class="newJobInput" />
+        </div>
+        <div class="formGroup">
+            <label class="formHeader">Address</label>
+            <input placeholder="e.g. 12 Example St" class="newJobInput" />
+        </div>
+        <div class="formGroup">
+            <label class="formHeader">Client Name</label>
+            <input placeholder="e.g. John Smith" class="newJobInput" />
+        </div>
+        <div class="formGroup">
+            <label class="formHeader">Start Date</label>
+            <input type="date" class="newJobInput" id="startDate" />
+        </div>
+        <div class="formGroup">
+            <label class="formHeader">Stock</label>
+            <input placeholder="e.g. Cable, switches" class="newJobInput" />
+        </div>
+        <div class="formGroup">
+            <label class="formHeader">Notes</label>
+            <textarea placeholder="Any additional notes" id="notesInput"></textarea>
+        </div>
+
+        <button class="formButton" id="newJobButton">
+            <i class="fa-solid fa-check"></i> Create Job
+        </button>
+    </div>
+</div>
+
+
+    <script src="script.js"></script>
+</body>
+</html>

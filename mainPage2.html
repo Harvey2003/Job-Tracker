@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JobTrack</title>
+    <link rel="stylesheet" href="style1.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+    <!-- TOP NAV -->
+    <div id="topNavContainer">
+        <span id="companyName">ElectricM8</span>
+        <div id="welcomeMessage">
+            <p id="welcomeTitle">Welcome back</p>
+            <p id="welcomeSub">Users Name</p>
+        </div>
+        <div id="openCloseNav">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+    </div>
+
+    <!-- SIDEBAR NAVIGATION -->
+    <div id="navOverlay"></div>
+    <div id="navBar">
+        <p id="navHeader">Menu</p>
+        <div class="navItem" id="jobsSection">
+            <i class="fa-solid fa-briefcase navIcon"></i>
+            <span>Jobs</span>
+        </div>
+        <div class="navItem" id="createJobSection">
+            <i class="fa-solid fa-plus navIcon"></i>
+            <span>Create Job</span>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="jobLists">
+        <div class="jobCard" id="addJob">
+            <p class="newJob">New Job</p>
+        </div>
+
+        <p id="sectionTitle">Active Jobs</p>
+        <div class="jobCard">
+            <div class="jobCardHeader">
+                <p class="jobName">Job entry here</p>
+                <span class="statusBadge">Active</span>
+            </div>
+            <p class="jobSub">Client name -- Due date</p>
+        </div>
+    </div>
+
+    <!-- JOB INFORMATION SECTION -->
+    <div id="newJobForm">
+        <span class="formHeader">Job Name</span>
+        <input placeholder="Job Name" class="newJobInput" />
+        <span class="formHeader">Address</span>
+        <input placeholder="Address" class="newJobInput" />
+        <span class="formHeader">Client Name</span>
+        <input placeholder="Client Name" class="newJobInput" />
+        <span class="formHeader">Stock</span>
+        <input placeholder="Stock" class="newJobInput" />
+        <stock class="formHeader">Notes</stock>
+        <input placeholder="Notes" class="newJobInput" />
+        <button class="formButton" id="newJobButton">Enter</button>
+    </div>
+
+
+    <script src="script.js"></script>
+</body>
+</html>
