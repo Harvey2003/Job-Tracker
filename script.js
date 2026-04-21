@@ -287,14 +287,12 @@ newJobButton.addEventListener("click", async () => {
 });
 
 // === OPEN JOB DETAIL ===
-async function openJobDetail(job) {
+async function openJobDetail(jobId) {
     jobDetail.classList.add("active");
     jobDetailView.style.display = "block";
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 
-    // Show loading state while we fetch fresh data
-    document.getElementById("jobDetailTitle").textContent = job.job_name;
     document.getElementById("clockSection").style.display = "none";
     timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading...</p>`;
 
@@ -302,7 +300,7 @@ async function openJobDetail(job) {
     const { data: freshJob, error } = await db
         .from("Jobs")
         .select("*")
-        .eq("id", job.id)
+        .eq("id", jobId)
         .single();
 
     if (error || !freshJob) {
@@ -315,10 +313,6 @@ async function openJobDetail(job) {
     populateDetailView(freshJob);
     updateClockUI(freshJob);
     loadTimeLogs(freshJob.id);
-
-    // Update the card in the list with fresh data too
-    const card = jobCardsContainer.querySelector(`[data-id="${freshJob.id}"]`);
-    if (card) jobCardsContainer.replaceChild(buildJobCard(freshJob), card);
 }
 
 function closeJobDetail() {
