@@ -229,7 +229,12 @@ function buildJobCard(job) {
         <p class="jobSub">${job.client_name || "No client"} · ${job.start_date || "No date"}</p>
     `;
 
-    card.addEventListener("click", () => openJobDetail(job.id));
+    // Pass only the ID so openJobDetail always fetches fresh
+    card.addEventListener("click", () => {
+        console.log("Card clicked, job ID:", job.id);
+        openJobDetail(job.id);
+    });
+
     return card;
 }
 
@@ -288,29 +293,35 @@ newJobButton.addEventListener("click", async () => {
 
 // === OPEN JOB DETAIL ===
 async function openJobDetail(jobId) {
+    console.log("openJobDetail called with ID:", jobId);
+
     jobDetail.classList.add("active");
     jobDetailView.style.display = "block";
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
-
-    // DON'T touch clockSection here — let populateDetailView and updateClockUI handle it
     timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading...</p>`;
 
+    // Always fetch completely fresh data from Supabase
     const { data: freshJob, error } = await db
         .from("Jobs")
         .select("*")
         .eq("id", jobId)
         .single();
 
+    console.log("Fresh job fetched:", freshJob);
+    console.log("clocked_in_at:", freshJob?.clocked_in_at);
+    console.log("clocked_out_at:", freshJob?.clocked_out_at);
+
     if (error || !freshJob) {
+        console.error("Failed to fetch job:", error);
         alert("Failed to load job details.");
         closeJobDetail();
         return;
     }
 
     currentJob = freshJob;
-    populateDetailView(freshJob);  // handles completed/active visibility
-    updateClockUI(freshJob);        // handles clocked in/out state
+    populateDetailView(freshJob);
+    updateClockUI(freshJob);
     loadTimeLogs(freshJob.id);
 }
 
@@ -342,8 +353,161 @@ function populateDetailView(job) {
 
     completeJobButton.style.display   = isCompleted ? "none" : "flex";
     uncompleteJobButton.style.display = isCompleted ? "flex" : "none";
-
     document.getElementById("clockSection").style.display = isCompleted ? "none" : "flex";
+}
+
+// === CLOCK UI ===
+function updateClockUI(job) {
+    const totalSeconds = job.total_time_seconds || 0;
+
+    console.log("updateClockUI — clocked_in_at:", job.clocked_in_at, "clocked_out_at:", job.clocked_out_at);
+
+    if (job.clocked_in_at && !job.clocked_out_at) {
+        clockButton.classList.add("clockedIn");
+        clockButtonText.textContent = "Clock Out";
+        clockStatus.textContent = `Clocked in at ${formatTime(new Date(job.clocked_in_at))}`;
+        console.log("UI set to: CLOCKED IN");
+    } else {
+        clockButton.classList.remove("clockedIn");
+        clockButtonText.textContent = "Clock In";
+        clockStatus.textContent = job.clocked_out_at
+            ? `Last clocked out at ${formatTime(new Date(job.clocked_out_at))}`
+            : "Not yet clocked in";
+        console.log("UI set to: CLOCKED OUT");
+    }
+
+    totalTimeDisplay.textContent = totalSeconds > 0
+        ? `Total time on job: ${formatDuration(totalSeconds)}`
+        : "";
+}
+
+// === HANDLE CLOCK OUT ===
+async function handleClockOut() {
+    const now            = new Date().toISOString();
+    const clockInTime    = new Date(currentJob.clocked_in_at);
+    const clockOutTime   = new Date(now);
+    const sessionSeconds = Math.floor((clockOutTime - clockInTime) / 1000);
+    const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
+
+    const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "Unknown";
+
+    // Save session to time_logs
+    const { error: logError } = await db.from("time_logs").insert([{
+        job_id:           currentJob.id,
+        user_id:          currentUser.id,
+        user_name:        displayName,
+        clocked_in_at:    currentJob.clocked_in_at,
+        clocked_out_at:   now,
+        duration_seconds: sessionSeconds
+    }]);
+
+    console.log("time_logs insert error:", logError);
+
+    // Update job record
+    const { data, error } = await db
+        .from("Jobs")
+        .update({
+            clocked_out_at:     now,
+            total_time_seconds: newTotal
+        })
+        .eq("id", currentJob.id)
+        .select()
+        .single();
+
+    console.log("Clock out job update:", { data, error });
+
+    if (!error) {
+        currentJob = data;
+        updateClockUI(data);
+        loadTimeLogs(data.id);
+
+        const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
+        if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
+    }
+
+    return { error };
+}
+
+// === CLOCK BUTTON ===
+clockButton.addEventListener("click", async () => {
+    if (!currentJob) return;
+    clockButton.disabled = true;
+
+    if (currentJob.clocked_in_at && !currentJob.clocked_out_at) {
+        await handleClockOut();
+    } else {
+        const now = new Date().toISOString();
+
+        console.log("Clocking in job ID:", currentJob.id);
+
+        const { data, error } = await db
+            .from("Jobs")
+            .update({
+                clocked_in_at:  now,
+                clocked_out_at: null
+            })
+            .eq("id", currentJob.id)
+            .select()
+            .single();
+
+        console.log("Clock in result:", { data, error });
+
+        if (error) {
+            alert("Clock in failed: " + error.message);
+            clockButton.disabled = false;
+            return;
+        }
+
+        if (!data) {
+            alert("Clock in returned no data — RLS may be blocking the update.");
+            clockButton.disabled = false;
+            return;
+        }
+
+        currentJob = data;
+        updateClockUI(data);
+    }
+
+    clockButton.disabled = false;
+});
+
+// === LOAD TIME LOGS ===
+async function loadTimeLogs(jobId) {
+    timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading sessions...</p>`;
+
+    const { data: logs, error } = await db
+        .from("time_logs")
+        .select("*")
+        .eq("job_id", jobId)
+        .order("clocked_in_at", { ascending: false });
+
+    if (error || !logs || logs.length === 0) {
+        timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">No sessions logged yet.</p>`;
+        return;
+    }
+
+    timeLogsContainer.innerHTML = "";
+
+    logs.forEach(log => {
+        const inTime  = new Date(log.clocked_in_at);
+        const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
+        const name    = log.user_name || "Unknown";
+
+        const row = document.createElement("div");
+        row.classList.add("timeLogRow");
+        row.innerHTML = `
+            <div class="timeLogLeft">
+                <div class="timeLogName">${name}</div>
+                <div class="timeLogDate">${formatDate(inTime)}</div>
+            </div>
+            <div class="timeLogTimes">
+                <span><i class="fa-solid fa-arrow-right-to-bracket"></i> ${formatTime(inTime)}</span>
+                <span><i class="fa-solid fa-arrow-right-from-bracket"></i> ${outTime ? formatTime(outTime) : "—"}</span>
+            </div>
+            <div class="timeLogDuration">${formatDuration(log.duration_seconds || 0)}</div>
+        `;
+        timeLogsContainer.appendChild(row);
+    });
 }
 
 // === EDIT TOGGLE ===
@@ -464,128 +628,25 @@ uncompleteJobButton.addEventListener("click", async () => {
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
 });
 
-// === CLOCK UI ===
-function updateClockUI(job) {
-    const totalSeconds = job.total_time_seconds || 0;
-    const isCompleted = job.status === "completed";
-
-    // Don't touch clock UI if job is completed
-    if (isCompleted) return;
-
-    if (job.clocked_in_at && !job.clocked_out_at) {
-        clockButton.classList.add("clockedIn");
-        clockButtonText.textContent = "Clock Out";
-        clockStatus.textContent = `Clocked in at ${formatTime(new Date(job.clocked_in_at))}`;
-    } else {
-        clockButton.classList.remove("clockedIn");
-        clockButtonText.textContent = "Clock In";
-        clockStatus.textContent = job.clocked_out_at
-            ? `Last clocked out at ${formatTime(new Date(job.clocked_out_at))}`
-            : "Not yet clocked in";
-    }
-
-    totalTimeDisplay.textContent = totalSeconds > 0
-        ? `Total time on job: ${formatDuration(totalSeconds)}`
-        : "";
+// === HELPERS ===
+function capitalise(str) {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// === HANDLE CLOCK OUT ===
-async function handleClockOut() {
-    const now            = new Date().toISOString();
-    const clockInTime    = new Date(currentJob.clocked_in_at);
-    const clockOutTime   = new Date(now);
-    const sessionSeconds = Math.floor((clockOutTime - clockInTime) / 1000);
-    const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
-
-    const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "Unknown";
-
-    // Save session to time_logs
-    await db.from("time_logs").insert([{
-        job_id:           currentJob.id,
-        user_id:          currentUser.id,
-        user_name:        displayName,
-        clocked_in_at:    currentJob.clocked_in_at,
-        clocked_out_at:   now,
-        duration_seconds: sessionSeconds
-    }]);
-
-    // Update job record
-    const { data, error } = await db
-        .from("Jobs")
-        .update({
-            clocked_out_at:     now,
-            total_time_seconds: newTotal
-        })
-        .eq("id", currentJob.id)
-        .select()
-        .single();
-
-    if (!error) {
-        currentJob = data;
-        updateClockUI(data);
-        loadTimeLogs(data.id);
-
-        const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
-        if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
-    }
-
-    return { error };
+function formatTime(date) {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
-// === CLOCK BUTTON ===
-clockButton.addEventListener("click", async () => {
-    if (!currentJob) return;
-    clockButton.disabled = true;
 
-    if (currentJob.clocked_in_at && !currentJob.clocked_out_at) {
-        await handleClockOut();
-    } else {
-        const now = new Date().toISOString();
-        const { data, error } = await db
-            .from("Jobs")
-            .update({
-                clocked_in_at:  now,
-                clocked_out_at: null
-            })
-            .eq("id", currentJob.id)
-            .select()
-            .single();
+function formatDate(date) {
+    return date.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+}
 
-        if (!error) {
-            currentJob = data;
-            updateClockUI(data);
-        }
-    }
-
-    clockButton.disabled = false;
-});
-
-// === CLOCK BUTTON ===
-//clockButton.addEventListener("click", async () => {
-//    if (!currentJob) return;
-//    clockButton.disabled = true;
-
-//    if (currentJob.clocked_in_at && !currentJob.clocked_out_at) {
-//        await handleClockOut();
-//    } else {
-//        const now = new Date().toISOString();
-//        const { data, error } = await db
-//            .from("Jobs")
-//            .update({
-//                clocked_in_at:  now,
-//                clocked_out_at: null
-//            })
-//            .eq("id", currentJob.id)
-//            .select()
-//            .single();
-
-//        if (!error) {
-//            currentJob = data;
-//            updateClockUI(data);
-//        }
-//    }
-
-//    clockButton.disabled = false;
-//});
-
-// === LOAD TIME LOGS ===
-async function loadTimeL<span class="ml-2" /><span class="inline-block w-3 h-3 rounded-full bg-neutral-a12 align-middle mb-[0.1rem]" />
+function formatDuration(totalSeconds) {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+}
