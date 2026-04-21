@@ -1,6 +1,6 @@
 // === SUPABASE INIT ===
-const SUPABASE_URL = "YOUR_SUPABASE_URL";
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_KEY";
+const SUPABASE_URL = "https://dbiilqwpdzilpdqzetyx.supabase.co/";
+const SUPABASE_ANON_KEY = "sb_publishable_qbZRx_7dX4dg8niBS0TedA_grY5M0su";
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
