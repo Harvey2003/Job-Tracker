@@ -528,7 +528,6 @@ async function handleClockOut() {
 
     return { error };
 }
-
 // === CLOCK BUTTON ===
 clockButton.addEventListener("click", async () => {
     if (!currentJob) return;
@@ -556,6 +555,34 @@ clockButton.addEventListener("click", async () => {
 
     clockButton.disabled = false;
 });
+
+// === CLOCK BUTTON ===
+//clockButton.addEventListener("click", async () => {
+//    if (!currentJob) return;
+//    clockButton.disabled = true;
+
+//    if (currentJob.clocked_in_at && !currentJob.clocked_out_at) {
+//        await handleClockOut();
+//    } else {
+//        const now = new Date().toISOString();
+//        const { data, error } = await db
+//            .from("Jobs")
+//            .update({
+//                clocked_in_at:  now,
+//                clocked_out_at: null
+//            })
+//            .eq("id", currentJob.id)
+//            .select()
+//            .single();
+
+//        if (!error) {
+//            currentJob = data;
+//            updateClockUI(data);
+//        }
+//    }
+
+//    clockButton.disabled = false;
+//});
 
 // === LOAD TIME LOGS ===
 async function loadTimeL<span class="ml-2" /><span class="inline-block w-3 h-3 rounded-full bg-neutral-a12 align-middle mb-[0.1rem]" />
