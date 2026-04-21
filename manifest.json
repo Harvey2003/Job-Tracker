@@ -4,7 +4,6 @@
     "start_url": "/Job-Tracker/",
     "scope": "/Job-Tracker/",
     "display": "standalone",
-    "display_override": ["fullscreen", "standalone"],
     "background_color": "#f9fafb",
     "theme_color": "#111827",
     "orientation": "portrait",
