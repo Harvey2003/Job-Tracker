@@ -23,7 +23,6 @@
             <p id="loginCompany">ElectricM8</p>
             <p id="loginTitle">Sign in to JobTrack</p>
             <p id="loginSub">Use your account credentials to continue</p>
-
             <div class="formGroup">
                 <label class="formHeader">Email</label>
                 <input type="email" id="loginEmail" class="newJobInput" placeholder="you@example.com" />
@@ -32,9 +31,7 @@
                 <label class="formHeader">Password</label>
                 <input type="password" id="loginPassword" class="newJobInput" placeholder="••••••••" />
             </div>
-
             <p id="loginError"></p>
-
             <button class="formButton" id="loginButton">
                 <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
             </button>
@@ -84,7 +81,6 @@
                 </div>
             </div>
         </div>
-
         <p id="sectionTitle">Active Jobs</p>
         <div id="jobCardsContainer"></div>
     </div>
@@ -96,7 +92,6 @@
                 <p id="formTitle">Create New Job</p>
                 <div id="formClose"><i class="fa-solid fa-xmark"></i></div>
             </div>
-
             <div class="formGroup">
                 <label class="formHeader">Job Name</label>
                 <input placeholder="e.g. Kitchen Rewire" class="newJobInput" id="inputJobName" />
@@ -121,10 +116,105 @@
                 <label class="formHeader">Notes</label>
                 <textarea placeholder="Any additional notes" id="notesInput"></textarea>
             </div>
-
             <button class="formButton" id="newJobButton">
                 <i class="fa-solid fa-check"></i> Create Job
             </button>
+        </div>
+    </div>
+
+    <!-- JOB DETAIL PANEL -->
+    <div id="jobDetail">
+        <div id="jobDetailCard">
+
+            <!-- Header -->
+            <div id="jobDetailHeader">
+                <div id="jobDetailBack">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </div>
+                <p id="jobDetailTitle">Job Details</p>
+                <div id="jobDetailEditToggle">
+                    <i class="fa-solid fa-pen"></i>
+                </div>
+            </div>
+
+            <!-- Clock In/Out -->
+            <div id="clockSection">
+                <button id="clockButton">
+                    <i class="fa-solid fa-clock"></i>
+                    <span id="clockButtonText">Clock In</span>
+                </button>
+                <p id="clockStatus"></p>
+                <p id="totalTimeDisplay"></p>
+            </div>
+
+            <!-- Job Info (view mode) -->
+            <div id="jobDetailView">
+                <div class="detailRow">
+                    <span class="detailLabel">Job Name</span>
+                    <span class="detailValue" id="detailJobName"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Address</span>
+                    <span class="detailValue" id="detailAddress"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Client</span>
+                    <span class="detailValue" id="detailClientName"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Start Date</span>
+                    <span class="detailValue" id="detailStartDate"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Stock</span>
+                    <span class="detailValue" id="detailStock"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Notes</span>
+                    <span class="detailValue" id="detailNotes"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Status</span>
+                    <span class="detailValue" id="detailStatus"></span>
+                </div>
+            </div>
+
+            <!-- Job Info (edit mode) -->
+            <div id="jobDetailEdit" style="display:none;">
+                <div class="formGroup">
+                    <label class="formHeader">Job Name</label>
+                    <input class="newJobInput" id="editJobName" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Address</label>
+                    <input class="newJobInput" id="editAddress" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Client Name</label>
+                    <input class="newJobInput" id="editClientName" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Start Date</label>
+                    <input type="date" class="newJobInput" id="editStartDate" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Stock</label>
+                    <input class="newJobInput" id="editStock" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Notes</label>
+                    <textarea class="newJobInput" id="editNotes" style="height:24vw; padding-top:3vw; resize:none;"></textarea>
+                </div>
+                <button class="formButton" id="saveEditButton">
+                    <i class="fa-solid fa-check"></i> Save Changes
+                </button>
+            </div>
+
+            <!-- Complete Job Button -->
+            <button class="formButton" id="completeJobButton" style="background-color:#16a34a; margin-top: 3vw;">
+                <i class="fa-solid fa-flag-checkered"></i> Complete Job
+            </button>
+
         </div>
     </div>
 

@@ -22,25 +22,39 @@ if (window.matchMedia("(display-mode: standalone)").matches) {
 }
 
 // === ELEMENTS ===
-const loginScreen       = document.getElementById("loginScreen");
-const loginEmail        = document.getElementById("loginEmail");
-const loginPassword     = document.getElementById("loginPassword");
-const loginButton       = document.getElementById("loginButton");
-const loginError        = document.getElementById("loginError");
-const welcomeSub        = document.getElementById("welcomeSub");
-const logoutButton      = document.getElementById("logoutButton");
-const openCloseNav      = document.getElementById("openCloseNav");
-const navBar            = document.getElementById("navBar");
-const navOverlay        = document.getElementById("navOverlay");
-const addJob            = document.getElementById("addJob");
-const newJobForm        = document.getElementById("newJobForm");
-const formClose         = document.getElementById("formClose");
-const newJobButton      = document.getElementById("newJobButton");
-const jobCardsContainer = document.getElementById("jobCardsContainer");
-const createJobSection  = document.getElementById("createJobSection");
-const jobsSection       = document.getElementById("jobsSection");
+const loginScreen        = document.getElementById("loginScreen");
+const loginEmail         = document.getElementById("loginEmail");
+const loginPassword      = document.getElementById("loginPassword");
+const loginButton        = document.getElementById("loginButton");
+const loginError         = document.getElementById("loginError");
+const welcomeSub         = document.getElementById("welcomeSub");
+const logoutButton       = document.getElementById("logoutButton");
+const openCloseNav       = document.getElementById("openCloseNav");
+const navBar             = document.getElementById("navBar");
+const navOverlay         = document.getElementById("navOverlay");
+const addJob             = document.getElementById("addJob");
+const newJobForm         = document.getElementById("newJobForm");
+const formClose          = document.getElementById("formClose");
+const newJobButton       = document.getElementById("newJobButton");
+const jobCardsContainer  = document.getElementById("jobCardsContainer");
+const createJobSection   = document.getElementById("createJobSection");
+const jobsSection        = document.getElementById("jobsSection");
+const jobDetail          = document.getElementById("jobDetail");
+const jobDetailBack      = document.getElementById("jobDetailBack");
+const jobDetailEditToggle = document.getElementById("jobDetailEditToggle");
+const jobDetailView      = document.getElementById("jobDetailView");
+const jobDetailEdit      = document.getElementById("jobDetailEdit");
+const clockButton        = document.getElementById("clockButton");
+const clockButtonText    = document.getElementById("clockButtonText");
+const clockStatus        = document.getElementById("clockStatus");
+const totalTimeDisplay   = document.getElementById("totalTimeDisplay");
+const completeJobButton  = document.getElementById("completeJobButton");
+const saveEditButton     = document.getElementById("saveEditButton");
 
-// === AUTH STATE LISTENER ===
+// === STATE ===
+let currentJob = null;
+
+// === AUTH ===
 db.auth.onAuthStateChange((event, session) => {
     if (session) {
         showApp(session.user);
@@ -49,7 +63,6 @@ db.auth.onAuthStateChange((event, session) => {
     }
 });
 
-// === SHOW LOGIN ===
 function showLogin() {
     loginScreen.classList.add("active");
     loginEmail.value = "";
@@ -57,11 +70,9 @@ function showLogin() {
     loginError.textContent = "";
 }
 
-// === SHOW APP ===
 function showApp(user) {
     loginScreen.classList.remove("active");
-    const displayName = user.email.split("@")[0];
-    welcomeSub.textContent = displayName;
+    welcomeSub.textContent = user.email.split("@")[0];
     loadJobs();
 }
 
@@ -89,7 +100,6 @@ loginButton.addEventListener("click", async () => {
     }
 });
 
-// Allow pressing Enter to submit login
 loginPassword.addEventListener("keydown", (e) => {
     if (e.key === "Enter") loginButton.click();
 });
@@ -115,6 +125,7 @@ navOverlay.addEventListener("click", closeNav);
 
 jobsSection.addEventListener("click", () => {
     closeNav();
+    closeJobDetail();
 });
 
 createJobSection.addEventListener("click", () => {
@@ -122,7 +133,7 @@ createJobSection.addEventListener("click", () => {
     openForm();
 });
 
-// === FORM OPEN / CLOSE ===
+// === FORM ===
 function openForm() {
     newJobForm.classList.add("active");
 }
@@ -138,12 +149,22 @@ newJobForm.addEventListener("click", (e) => {
     if (e.target === newJobForm) closeForm();
 });
 
-// === LOAD JOBS FROM SUPABASE ===
+// === KEYBOARD SCROLL FIX ===
+// Scrolls the focused input above the keyboard on mobile
+document.querySelectorAll(".newJobInput, #notesInput").forEach(input => {
+    input.addEventListener("focus", () => {
+        setTimeout(() => {
+            input.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 300);
+    });
+});
+
+// === LOAD JOBS ===
 async function loadJobs() {
     jobCardsContainer.innerHTML = `<p class="emptyState">Loading jobs...</p>`;
 
     const { data: jobs, error } = await db
-        .from("jobs")
+        .from("Jobs")
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -162,26 +183,27 @@ async function loadJobs() {
     jobs.forEach(job => jobCardsContainer.appendChild(buildJobCard(job)));
 }
 
-// === BUILD JOB CARD ELEMENT ===
+// === BUILD JOB CARD ===
 function buildJobCard(job) {
     const card = document.createElement("div");
     card.classList.add("jobCard");
     card.dataset.id = job.id;
 
-    const isActive = job.status === "active";
+    const isActive   = job.status === "active";
     const badgeBg    = isActive ? "#dcfce7" : "#f3f4f6";
     const badgeColor = isActive ? "#16a34a" : "#6b7280";
-    const statusText = capitalise(job.status);
 
     card.innerHTML = `
         <div class="jobCardHeader">
             <p class="jobName">${job.job_name}</p>
             <span class="statusBadge" style="background-color:${badgeBg}; color:${badgeColor};">
-                ${statusText}
+                ${capitalise(job.status)}
             </span>
         </div>
         <p class="jobSub">${job.client_name || "No client"} · ${job.start_date || "No date"}</p>
     `;
+
+    card.addEventListener("click", () => openJobDetail(job));
 
     return card;
 }
@@ -204,7 +226,7 @@ newJobButton.addEventListener("click", async () => {
     newJobButton.disabled = true;
 
     const { data, error } = await db
-        .from("jobs")
+        .from("Jobs")
         .insert([{
             job_name:    jobName,
             address:     address,
@@ -225,26 +247,241 @@ newJobButton.addEventListener("click", async () => {
         return;
     }
 
-    // Clear form fields
-    document.getElementById("inputJobName").value  = "";
-    document.getElementById("inputAddress").value  = "";
+    document.getElementById("inputJobName").value    = "";
+    document.getElementById("inputAddress").value    = "";
     document.getElementById("inputClientName").value = "";
-    document.getElementById("startDate").value     = "";
-    document.getElementById("inputStock").value    = "";
-    document.getElementById("notesInput").value    = "";
+    document.getElementById("startDate").value       = "";
+    document.getElementById("inputStock").value      = "";
+    document.getElementById("notesInput").value      = "";
 
-    // Remove empty state if present
     const empty = jobCardsContainer.querySelector(".emptyState");
     if (empty) empty.remove();
 
-    // Prepend new card to list
     jobCardsContainer.insertBefore(buildJobCard(data), jobCardsContainer.firstChild);
-
     closeForm();
+});
+
+// === JOB DETAIL ===
+function openJobDetail(job) {
+    currentJob = job;
+    populateDetailView(job);
+    updateClockUI(job);
+    jobDetail.classList.add("active");
+    jobDetailView.style.display = "block";
+    jobDetailEdit.style.display = "none";
+    jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
+
+    // Hide complete button if already complete
+    completeJobButton.style.display = job.status === "completed" ? "none" : "flex";
+}
+
+function closeJobDetail() {
+    jobDetail.classList.remove("active");
+    currentJob = null;
+}
+
+jobDetailBack.addEventListener("click", closeJobDetail);
+
+function populateDetailView(job) {
+    document.getElementById("jobDetailTitle").textContent  = job.job_name;
+    document.getElementById("detailJobName").textContent   = job.job_name    || "—";
+    document.getElementById("detailAddress").textContent   = job.address     || "—";
+    document.getElementById("detailClientName").textContent = job.client_name || "—";
+    document.getElementById("detailStartDate").textContent = job.start_date  || "—";
+    document.getElementById("detailStock").textContent     = job.stock       || "—";
+    document.getElementById("detailNotes").textContent     = job.notes       || "—";
+    document.getElementById("detailStatus").textContent    = capitalise(job.status);
+}
+
+// === EDIT TOGGLE ===
+jobDetailEditToggle.addEventListener("click", () => {
+    const isEditing = jobDetailEdit.style.display === "block";
+
+    if (isEditing) {
+        // Switch back to view
+        jobDetailView.style.display = "block";
+        jobDetailEdit.style.display = "none";
+        jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
+    } else {
+        // Populate edit fields
+        document.getElementById("editJobName").value   = currentJob.job_name    || "";
+        document.getElementById("editAddress").value   = currentJob.address     || "";
+        document.getElementById("editClientName").value = currentJob.client_name || "";
+        document.getElementById("editStartDate").value = currentJob.start_date  || "";
+        document.getElementById("editStock").value     = currentJob.stock       || "";
+        document.getElementById("editNotes").value     = currentJob.notes       || "";
+
+        jobDetailView.style.display = "none";
+        jobDetailEdit.style.display = "block";
+        jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+    }
+});
+
+// === SAVE EDIT ===
+saveEditButton.addEventListener("click", async () => {
+    const updates = {
+        job_name:    document.getElementById("editJobName").value.trim(),
+        address:     document.getElementById("editAddress").value.trim(),
+        client_name: document.getElementById("editClientName").value.trim(),
+        start_date:  document.getElementById("editStartDate").value || null,
+        stock:       document.getElementById("editStock").value.trim(),
+        notes:       document.getElementById("editNotes").value.trim(),
+    };
+
+    if (!updates.job_name) {
+        alert("Job name cannot be empty.");
+        return;
+    }
+
+    saveEditButton.textContent = "Saving...";
+    saveEditButton.disabled = true;
+
+    const { data, error } = await db
+        .from("Jobs")
+        .update(updates)
+        .eq("id", currentJob.id)
+        .select()
+        .single();
+
+    saveEditButton.disabled = false;
+    saveEditButton.innerHTML = '<i class="fa-solid fa-check"></i> Save Changes';
+
+    if (error) {
+        alert("Failed to save changes.");
+        return;
+    }
+
+    currentJob = data;
+    populateDetailView(data);
+
+    // Update the card in the list
+    const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
+    if (card) {
+        const newCard = buildJobCard(data);
+        jobCardsContainer.replaceChild(newCard, card);
+    }
+
+    jobDetailView.style.display = "block";
+    jobDetailEdit.style.display = "none";
+    jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
+});
+
+// === COMPLETE JOB ===
+completeJobButton.addEventListener("click", async () => {
+    if (!confirm("Mark this job as complete?")) return;
+
+    const { data, error } = await db
+        .from("Jobs")
+        .update({ status: "completed" })
+        .eq("id", currentJob.id)
+        .select()
+        .single();
+
+    if (error) {
+        alert("Failed to complete job.");
+        return;
+    }
+
+    currentJob = data;
+    populateDetailView(data);
+    completeJobButton.style.display = "none";
+
+    // Update card in list
+    const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
+    if (card) {
+        jobCardsContainer.replaceChild(buildJobCard(data), card);
+    }
+});
+
+// === CLOCK IN / OUT ===
+function updateClockUI(job) {
+    const totalSeconds = job.total_time_seconds || 0;
+
+    if (job.clocked_in_at && !job.clocked_out_at) {
+        // Currently clocked in
+        clockButton.classList.add("clockedIn");
+        clockButtonText.textContent = "Clock Out";
+        const since = new Date(job.clocked_in_at);
+        clockStatus.textContent = `Clocked in at ${formatTime(since)}`;
+    } else {
+        // Not clocked in
+        clockButton.classList.remove("clockedIn");
+        clockButtonText.textContent = "Clock In";
+
+        if (job.clocked_out_at) {
+            const out = new Date(job.clocked_out_at);
+            clockStatus.textContent = `Last clocked out at ${formatTime(out)}`;
+        } else {
+            clockStatus.textContent = "Not yet clocked in";
+        }
+    }
+
+    totalTimeDisplay.textContent = totalSeconds > 0
+        ? `Total time on job: ${formatDuration(totalSeconds)}`
+        : "";
+}
+
+clockButton.addEventListener("click", async () => {
+    if (!currentJob) return;
+
+    const now = new Date().toISOString();
+    let updates = {};
+
+    if (currentJob.clocked_in_at && !currentJob.clocked_out_at) {
+        // Clock OUT
+        const clockInTime  = new Date(currentJob.clocked_in_at);
+        const clockOutTime = new Date(now);
+        const sessionSeconds = Math.floor((clockOutTime - clockInTime) / 1000);
+        const newTotal = (currentJob.total_time_seconds || 0) + sessionSeconds;
+
+        updates = {
+            clocked_out_at:      now,
+            total_time_seconds:  newTotal
+        };
+    } else {
+        // Clock IN
+        updates = {
+            clocked_in_at:  now,
+            clocked_out_at: null
+        };
+    }
+
+    clockButton.disabled = true;
+
+    const { data, error } = await db
+        .from("Jobs")
+        .update(updates)
+        .eq("id", currentJob.id)
+        .select()
+        .single();
+
+    clockButton.disabled = false;
+
+    if (error) {
+        alert("Failed to update clock. Please try again.");
+        return;
+    }
+
+    currentJob = data;
+    updateClockUI(data);
 });
 
 // === HELPERS ===
 function capitalise(str) {
     if (!str) return "";
     return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function formatTime(date) {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDuration(totalSeconds) {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
 }
