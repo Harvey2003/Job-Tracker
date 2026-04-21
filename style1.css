@@ -1,4 +1,3 @@
-/* === GLOBAL === */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 * {
@@ -13,6 +12,59 @@ body {
     color: #111827;
     min-height: 100dvh;
     overflow-x: hidden;
+}
+
+/* === LOGIN SCREEN === */
+#loginScreen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: #f9fafb;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+#loginScreen.active {
+    display: flex;
+}
+
+#loginCard {
+    background-color: #ffffff;
+    width: 90vw;
+    border-radius: 20px;
+    padding: 8vw;
+    display: flex;
+    flex-direction: column;
+    gap: 1vw;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+}
+
+#loginCompany {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #9ca3af;
+    margin-bottom: 2vw;
+}
+
+#loginTitle {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 1vw;
+}
+
+#loginSub {
+    font-size: 0.82rem;
+    color: #9ca3af;
+    margin-bottom: 4vw;
+}
+
+#loginError {
+    font-size: 0.82rem;
+    color: #dc2626;
+    min-height: 1.2em;
+    margin-top: 1vw;
 }
 
 /* === TOP NAV === */
@@ -69,10 +121,10 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
-    #openCloseNav:hover, #openCloseNav:active {
-        background-color: #f3f4f6;
-        color: #111827;
-    }
+#openCloseNav:hover, #openCloseNav:active {
+    background-color: #f3f4f6;
+    color: #111827;
+}
 
 /* === OVERLAY === */
 #navOverlay {
@@ -84,9 +136,9 @@ body {
     backdrop-filter: blur(2px);
 }
 
-    #navOverlay.active {
-        display: block;
-    }
+#navOverlay.active {
+    display: block;
+}
 
 /* === SIDEBAR === */
 #navBar {
@@ -106,9 +158,9 @@ body {
     gap: 2vw;
 }
 
-    #navBar.open {
-        transform: translateX(0);
-    }
+#navBar.open {
+    transform: translateX(0);
+}
 
 #navHeader {
     font-size: 0.75rem;
@@ -137,16 +189,16 @@ body {
     min-height: 52px;
 }
 
-    .navItem:hover, .navItem:active {
-        background-color: #f3f4f6;
-        color: #111827;
-    }
+.navItem:hover, .navItem:active {
+    background-color: #f3f4f6;
+    color: #111827;
+}
 
-    .navItem.active {
-        background-color: #f3f4f6;
-        color: #111827;
-        font-weight: 600;
-    }
+.navItem.active {
+    background-color: #f3f4f6;
+    color: #111827;
+    font-weight: 600;
+}
 
 .navIcon {
     font-size: 1rem;
@@ -163,11 +215,11 @@ body {
     gap: 3vw;
 }
 
-.newJob {
-    justify-self: center;
-    margin: 10px;
-
-    font-weight: bold;
+#sectionTitle {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 2vw;
 }
 
 /* === ADD JOB CARD === */
@@ -175,13 +227,12 @@ body {
     border: 2px dashed #e5e7eb;
     background-color: transparent;
     transition: all 0.15s ease;
-    margin-bottom: 0;
 }
 
-    #addJob:hover, #addJob:active {
-        border-color: #9ca3af;
-        background-color: #f9fafb;
-    }
+#addJob:hover, #addJob:active {
+    border-color: #9ca3af;
+    background-color: #f9fafb;
+}
 
 #addJobInner {
     display: flex;
@@ -214,12 +265,6 @@ body {
     color: #9ca3af;
     font-weight: 400;
 }
-#sectionTitle {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 2vw;
-}
 
 /* === JOB CARDS === */
 .jobCard {
@@ -232,9 +277,9 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
-    .jobCard:active {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
-    }
+.jobCard:active {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+}
 
 .jobCardHeader {
     display: flex;
@@ -277,9 +322,9 @@ body {
     justify-content: center;
 }
 
-    #newJobForm.active {
-        display: flex;
-    }
+#newJobForm.active {
+    display: flex;
+}
 
 #formCard {
     background-color: #ffffff;
@@ -294,6 +339,7 @@ body {
     overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
+
 #formTitleRow {
     display: flex;
     justify-content: space-between;
@@ -321,9 +367,9 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
-    #formClose:active {
-        background-color: #e5e7eb;
-    }
+#formClose:active {
+    background-color: #e5e7eb;
+}
 
 /* === FORM FIELDS === */
 .formGroup {
@@ -353,10 +399,39 @@ body {
     transition: border 0.15s ease;
 }
 
-    .newJobInput:focus {
-        border-color: #9ca3af;
-        background-color: #ffffff;
-    }
+.newJobInput:focus {
+    border-color: #9ca3af;
+    background-color: #ffffff;
+}
+
+#notesInput {
+    height: 28vw;
+    font-size: 0.95rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 3vw 4vw;
+    background-color: #f9fafb;
+    color: #111827;
+    outline: none;
+    transition: border 0.15s ease;
+    resize: none;
+    font-family: 'Inter', sans-serif;
+}
+
+#notesInput:focus {
+    border-color: #9ca3af;
+    background-color: #ffffff;
+}
+
+#startDate {
+    color: #111827;
+    cursor: pointer;
+}
+
+#startDate::-webkit-calendar-picker-indicator {
+    opacity: 0.5;
+    cursor: pointer;
+}
 
 /* === FORM BUTTON === */
 .formButton {
@@ -378,37 +453,14 @@ body {
     -webkit-tap-highlight-color: transparent;
 }
 
-    .formButton:active {
-        background-color: #374151;
-    }
-
-/* === NOTES TEXTAREA === */
-#notesInput {
-    height: 28vw;
-    font-size: 0.95rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 3vw 4vw;
-    background-color: #f9fafb;
-    color: #111827;
-    outline: none;
-    transition: border 0.15s ease;
-    resize: none;
-    font-family: 'Inter', sans-serif;
+.formButton:active {
+    background-color: #374151;
 }
 
-    #notesInput:focus {
-        border-color: #9ca3af;
-        background-color: #ffffff;
-    }
-
-/* === DATE INPUT === */
-#startDate {
-    color: #111827;
-    cursor: pointer;
+/* === EMPTY STATE === */
+.emptyState {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    text-align: center;
+    padding: 4vw 0;
 }
-
-    #startDate::-webkit-calendar-picker-indicator {
-        opacity: 0.5;
-        cursor: pointer;
-    }
