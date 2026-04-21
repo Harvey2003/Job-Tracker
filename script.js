@@ -293,10 +293,9 @@ async function openJobDetail(jobId) {
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 
-    document.getElementById("clockSection").style.display = "none";
+    // DON'T touch clockSection here — let populateDetailView and updateClockUI handle it
     timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading...</p>`;
 
-    // Always fetch fresh data from Supabase
     const { data: freshJob, error } = await db
         .from("Jobs")
         .select("*")
@@ -310,8 +309,8 @@ async function openJobDetail(jobId) {
     }
 
     currentJob = freshJob;
-    populateDetailView(freshJob);
-    updateClockUI(freshJob);
+    populateDetailView(freshJob);  // handles completed/active visibility
+    updateClockUI(freshJob);        // handles clocked in/out state
     loadTimeLogs(freshJob.id);
 }
 
@@ -468,6 +467,10 @@ uncompleteJobButton.addEventListener("click", async () => {
 // === CLOCK UI ===
 function updateClockUI(job) {
     const totalSeconds = job.total_time_seconds || 0;
+    const isCompleted = job.status === "completed";
+
+    // Don't touch clock UI if job is completed
+    if (isCompleted) return;
 
     if (job.clocked_in_at && !job.clocked_out_at) {
         clockButton.classList.add("clockedIn");
