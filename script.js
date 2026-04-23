@@ -773,14 +773,16 @@ saveEditButton.addEventListener("click", async () => {
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 });
 
-// === COMPLETE JOB ===
+// === COMPLETE JOB (with email) ===
 completeJobButton.addEventListener("click", async () => {
-    if (!confirm("Mark this job as complete?")) return;
+    if (!confirm("Mark this job as complete and send summary email?")) return;
 
+    // If clocked in, clock out first
     if (activeSession) {
         await handleClockOutForComplete();
     }
 
+    // Update job status to 'completed'
     const { data, error } = await db
         .from("Jobs")
         .update({ status: "completed" })
@@ -798,9 +800,42 @@ completeJobButton.addEventListener("click", async () => {
     populateDetailView(data);
     updateClockUI(null);
 
+    // Update the job card in the list
     const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
     refreshJobListFromCache();
+
+    // --- SEND EMAIL via Edge Function ---
+    try {
+        completeJobButton.disabled = true;
+        completeJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Sending email...';
+
+        const session = await db.auth.getSession();
+        const accessToken = session.data.session?.access_token;
+
+        const response = await fetch(
+            `${SUPABASE_URL}/functions/v1/send-job-completion-email`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ jobId: currentJob.id }),
+            }
+        );
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Failed to send email');
+
+        alert('✅ Job marked complete and summary email sent.');
+    } catch (err) {
+        console.error('Email error:', err);
+        alert('⚠️ Job completed, but email could not be sent. Please notify admin manually.');
+    } finally {
+        completeJobButton.disabled = false;
+        completeJobButton.innerHTML = '<i class="fa-solid fa-flag-checkered"></i> Complete Job';
+    }
 });
 
 // === UNCOMPLETE JOB ===
