@@ -805,99 +805,25 @@ completeJobButton.addEventListener("click", async () => {
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
     refreshJobListFromCache();
 
-// --- SEND EMAIL directly via Resend (no Edge Function needed) ---
+// --- SEND EMAIL via Edge Function (API key auth) ---
     try {
         completeJobButton.disabled = true;
         completeJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Sending email...';
 
-        // Fetch time logs for the email content
-        const { data: logs } = await db
-            .from("time_logs")
-            .select("*")
-            .eq("job_id", currentJob.id)
-            .order("clocked_in_at", { ascending: false });
+        const response = await fetch(
+            `${SUPABASE_URL}/functions/v1/send-job-completion-email`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': 'a7f3e9d2-4b6c-8f1a-9e2d-7c5b3a1f6d8e'  // <-- same as FUNCTION_API_KEY
+                },
+                body: JSON.stringify({ jobId: currentJob.id }),
+            }
+        );
 
-        const totalSeconds = logs?.reduce((sum, log) => sum + (log.duration_seconds || 0), 0) || 0;
-        const totalHours = (totalSeconds / 3600).toFixed(2);
-
-        // Format helpers
-        const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString("en-NZ", { day: "numeric", month: "short", year: "numeric" }) : "—";
-        const formatTime = (dateStr) => new Date(dateStr).toLocaleTimeString("en-NZ", { hour: "2-digit", minute: "2-digit" });
-        const formatDuration = (sec) => {
-            const h = Math.floor(sec / 3600);
-            const m = Math.floor((sec % 3600) / 60);
-            return h > 0 ? `${h}h ${m}m` : `${m}m`;
-        };
-
-        const logsHtml = logs && logs.length > 0
-            ? logs.map(log => `
-                <tr>
-                    <td style="padding:8px; border-bottom:1px solid #eee;">${log.user_name || "—"}</td>
-                    <td style="padding:8px; border-bottom:1px solid #eee;">${formatDate(log.clocked_in_at)}</td>
-                    <td style="padding:8px; border-bottom:1px solid #eee;">${formatTime(log.clocked_in_at)}</td>
-                    <td style="padding:8px; border-bottom:1px solid #eee;">${log.clocked_out_at ? formatTime(log.clocked_out_at) : "—"}</td>
-                    <td style="padding:8px; border-bottom:1px solid #eee;">${formatDuration(log.duration_seconds || 0)}</td>
-                </tr>
-            `).join("")
-            : `<tr><td colspan="5" style="padding:12px; text-align:center;">No time sessions recorded</td></tr>`;
-
-        const emailHtml = `
-            <div style="font-family: system-ui, sans-serif; max-width:600px; margin:0 auto;">
-                <h2 style="color:#111827;">Job Completion Report – ${currentJob.job_name}</h2>
-                <p><strong>Completed at:</strong> ${new Date().toLocaleString("en-NZ")}</p>
-                <hr style="border:0; border-top:1px solid #e5e7eb;">
-                <h3 style="color:#374151;">Job Details</h3>
-                <table style="width:100%; border-collapse:collapse;">
-                    <tr><td style="padding:6px 0; width:140px; color:#6b7280;">Job Name</td><td><strong>${currentJob.job_name}</strong></td></tr>
-                    <tr><td style="padding:6px 0; color:#6b7280;">Client</td><td>${currentJob.client_name || "—"}</td></tr>
-                    <tr><td style="padding:6px 0; color:#6b7280;">Address</td><td>${currentJob.address || "—"}</td></tr>
-                    <tr><td style="padding:6px 0; color:#6b7280;">Phone</td><td>${currentJob.phone || "—"}</td></tr>
-                    <tr><td style="padding:6px 0; color:#6b7280;">Start Date</td><td>${currentJob.start_date || "—"}</td></tr>
-                    <tr><td style="padding:6px 0; color:#6b7280;">Stock</td><td>${currentJob.stock || "—"}</td></tr>
-                    <tr><td style="padding:6px 0; color:#6b7280;">Fault</td><td>${currentJob.fault_desc || "—"}</td></tr>
-                    <tr><td style="padding:6px 0; color:#6b7280;">Total Time</td><td><strong>${totalHours} hours</strong> (${totalSeconds} seconds)</td></tr>
-                </table>
-                <h3 style="color:#374151; margin-top:24px;">Time Sessions</h3>
-                <table style="width:100%; border-collapse:collapse; font-size:14px;">
-                    <thead>
-                        <tr style="background:#f3f4f6;">
-                            <th style="padding:8px; text-align:left;">User</th>
-                            <th style="padding:8px; text-align:left;">Date</th>
-                            <th style="padding:8px; text-align:left;">In</th>
-                            <th style="padding:8px; text-align:left;">Out</th>
-                            <th style="padding:8px; text-align:left;">Duration</th>
-                        </tr>
-                    </thead>
-                    <tbody>${logsHtml}</tbody>
-                </table>
-                <p style="margin-top:30px; font-size:12px; color:#9ca3af;">
-                    This email was automatically generated by JobTrack (ElectricM8).
-                </p>
-            </div>
-        `;
-
-        // Direct call to Resend API
-        const resendApiKey = 're_79vASxRS_168bRYXm73qb3F7Rh7kC46p5';
-        const recipientEmail = 'ashleywork02@gmail.com'; // <-- Replace with desired recipient
-
-        const resendResponse = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${resendApiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                from: "JobTrack <noreply@electricm8.co.nz>",
-                to: [recipientEmail],
-                subject: `✅ Job Completed: ${currentJob.job_name} (${currentJob.client_name || "No client"})`,
-                html: emailHtml,
-            }),
-        });
-
-        if (!resendResponse.ok) {
-            const err = await resendResponse.json();
-            throw new Error(err.message || 'Resend API error');
-        }
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Failed to send email');
 
         alert('✅ Job marked complete and summary email sent.');
     } catch (err) {
