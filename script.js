@@ -290,7 +290,7 @@ newJobButton.addEventListener("click", async () => {
     const faultDescription = document.getElementById("inputFault").value.trim();
     const clientName = document.getElementById("inputClientName").value.trim();
     const address    = document.getElementById("inputAddress").value.trim();
-    const phone = document.getElementById("inputPhone")
+    const phone = document.getElementById("inputPhone").value.trim();
     const startDate  = document.getElementById("startDate").value;
     const stock      = document.getElementById("inputStock").value.trim();
 
@@ -666,7 +666,7 @@ saveEditButton.addEventListener("click", async () => {
         client_name: document.getElementById("editClientName").value.trim(),
         start_date:  document.getElementById("editStartDate").value || null,
         stock:       document.getElementById("editStock").value.trim(),
-        faultDescription:       document.getElementById("editFault").value.trim(),
+        faultDescription: document.getElementById("editFault").value.trim(),
         phone: document.getElementById("editPhone").value.trim()
     };
 
