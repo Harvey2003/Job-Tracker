@@ -803,3 +803,80 @@ body {
 #uncompleteJobButton:active {
     background-color: #4b5563 !important;
 }
+
+/* Search bar */
+#searchWrapper {
+    position: relative;
+    margin-bottom: 4vw;
+    display: flex;
+    align-items: center;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 4vw;
+    color: #9ca3af;
+    font-size: 1rem;
+    pointer-events: none;
+}
+
+#searchInput {
+    width: 100%;
+    height: 52px;
+    padding: 0 4vw 0 12vw;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background-color: #ffffff;
+    font-size: 0.95rem;
+    color: #111827;
+    outline: none;
+    transition: border 0.15s ease;
+    -webkit-appearance: none;
+}
+
+#searchInput:focus {
+    border-color: #f59e0b;
+    background-color: #ffffff;
+}
+
+#searchInput::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+}
+
+/* Status group headers */
+.statusGroupHeader {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 6vw 0 3vw 0;
+    padding-bottom: 2vw;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.statusGroupHeader:first-of-type {
+    margin-top: 2vw;
+}
+
+.statusGroupTitle {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.statusGroupCount {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+    background-color: #f3f4f6;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+}
+
+/* Adjust spacing when no jobs in group */
+.statusGroupHeader + .emptyState {
+    margin-top: 0;
+    margin-bottom: 4vw;
+}

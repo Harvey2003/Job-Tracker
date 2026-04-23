@@ -52,11 +52,13 @@ const completeJobButton   = document.getElementById("completeJobButton");
 const uncompleteJobButton = document.getElementById("uncompleteJobButton");
 const saveEditButton      = document.getElementById("saveEditButton");
 const timeLogsContainer   = document.getElementById("timeLogsContainer");
+const searchInput         = document.getElementById("searchInput");
 
 // === STATE ===
 let currentJob        = null;
 let currentUser       = null;
 let activeSession     = null; // the open time_log row if clocked in, else null
+let currentSearchTerm = "";
 
 // === LOCAL STORAGE HELPERS ===
 function cacheJob(job) {
@@ -203,6 +205,17 @@ document.querySelectorAll(".newJobInput, #inputFault").forEach(input => {
     });
 });
 
+// === SEARCH LISTENER ===
+searchInput.addEventListener("input", (e) => {
+    currentSearchTerm = e.target.value.trim().toLowerCase();
+    const jobs = getCachedAllJobs();
+    if (jobs.length > 0) {
+        renderJobList(jobs);
+    } else {
+        loadJobs();
+    }
+});
+
 // === JOB STATUS HELPER ===
 function getJobStatus(job) {
     if (job.status === "completed") return "completed";
@@ -237,8 +250,7 @@ async function loadJobs() {
     if (error || !jobs) {
         const cachedJobs = getCachedAllJobs();
         if (cachedJobs.length > 0) {
-            jobCardsContainer.innerHTML = "";
-            cachedJobs.forEach(job => jobCardsContainer.appendChild(buildJobCard(job)));
+            renderJobList(cachedJobs);
             jobCardsContainer.insertAdjacentHTML("afterbegin", `
                 <p class="emptyState" style="color:#f59e0b; margin-bottom:2vw;">
                     <i class="fa-solid fa-wifi-slash"></i> Offline — showing cached data
@@ -251,14 +263,62 @@ async function loadJobs() {
     }
 
     cacheAllJobs(jobs);
+    renderJobList(jobs);
+}
+
+// === RENDER JOB LIST (with search and grouping) ===
+function renderJobList(jobs) {
+    // Filter by search term (job name, address, client)
+    const filtered = jobs.filter(job => {
+        if (!currentSearchTerm) return true;
+        const name = (job.job_name || "").toLowerCase();
+        const address = (job.address || "").toLowerCase();
+        const client = (job.client_name || "").toLowerCase();
+        return name.includes(currentSearchTerm) || address.includes(currentSearchTerm) || client.includes(currentSearchTerm);
+    });
+
+    // Group by status in order: active, upcoming, completed
+    const groups = {
+        active: [],
+        upcoming: [],
+        completed: []
+    };
+
+    filtered.forEach(job => {
+        const status = getJobStatus(job);
+        if (status === "active") groups.active.push(job);
+        else if (status === "upcoming") groups.upcoming.push(job);
+        else if (status === "completed") groups.completed.push(job);
+    });
+
+    // Clear container
     jobCardsContainer.innerHTML = "";
 
-    if (jobs.length === 0) {
-        jobCardsContainer.innerHTML = `<p class="emptyState">No jobs yet. Tap above to create one.</p>`;
-        return;
-    }
+    // Helper to build a group section
+    const buildGroup = (title, jobsArray, icon) => {
+        if (jobsArray.length === 0) return; // skip empty groups
 
-    jobs.forEach(job => jobCardsContainer.appendChild(buildJobCard(job)));
+        const header = document.createElement("div");
+        header.className = "statusGroupHeader";
+        header.innerHTML = `
+            <span class="statusGroupTitle"><i class="fa-solid ${icon}" style="margin-right: 8px; font-size:0.85rem;"></i>${title}</span>
+            <span class="statusGroupCount">${jobsArray.length}</span>
+        `;
+        jobCardsContainer.appendChild(header);
+
+        jobsArray.forEach(job => {
+            jobCardsContainer.appendChild(buildJobCard(job));
+        });
+    };
+
+    buildGroup("Active", groups.active, "fa-play");
+    buildGroup("Upcoming", groups.upcoming, "fa-calendar");
+    buildGroup("Completed", groups.completed, "fa-check-circle");
+
+    // If no jobs after filtering
+    if (filtered.length === 0) {
+        jobCardsContainer.innerHTML = `<p class="emptyState">No jobs match your search.</p>`;
+    }
 }
 
 // === BUILD JOB CARD ===
@@ -282,6 +342,12 @@ function buildJobCard(job) {
 
     card.addEventListener("click", () => openJobDetail(job.id));
     return card;
+}
+
+// === REFRESH LIST FROM CACHE (called after updates) ===
+function refreshJobListFromCache() {
+    const jobs = getCachedAllJobs();
+    if (jobs.length > 0) renderJobList(jobs);
 }
 
 // === CREATE JOB ===
@@ -310,9 +376,9 @@ newJobButton.addEventListener("click", async () => {
             client_name: clientName,
             start_date:  startDate || null,
             stock:       stock,
-            fault_desc:       faultDescription,
+            fault_desc:  faultDescription,
             status:      "active",
-            phone: phone
+            phone:       phone
         }])
         .select()
         .single();
@@ -325,8 +391,13 @@ newJobButton.addEventListener("click", async () => {
         return;
     }
 
-    cacheJob(data);
+    // Update cache and re-render list
+    const currentJobs = getCachedAllJobs();
+    currentJobs.unshift(data);
+    cacheAllJobs(currentJobs);
+    renderJobList(currentJobs);
 
+    // Clear form
     document.getElementById("inputJobName").value    = "";
     document.getElementById("inputAddress").value    = "";
     document.getElementById("inputClientName").value = "";
@@ -334,16 +405,10 @@ newJobButton.addEventListener("click", async () => {
     document.getElementById("inputStock").value      = "";
     document.getElementById("inputFault").value      = "";
 
-    const empty = jobCardsContainer.querySelector(".emptyState");
-    if (empty) empty.remove();
-
-    jobCardsContainer.insertBefore(buildJobCard(data), jobCardsContainer.firstChild);
     closeForm();
 });
 
 // === CHECK ACTIVE SESSION ===
-// Queries time_logs for an open session (clocked_in, not yet clocked_out)
-// for the current user on the current job
 async function checkActiveSession(jobId) {
     const { data, error } = await db
         .from("time_logs")
@@ -360,7 +425,7 @@ async function checkActiveSession(jobId) {
         return null;
     }
 
-    return data; // returns the open session row, or null if none
+    return data;
 }
 
 // === OPEN JOB DETAIL ===
@@ -370,7 +435,7 @@ async function openJobDetail(jobId) {
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 
-    // Show cached job instantly while we fetch fresh
+    // Show cached job instantly
     const cachedJob = getCachedJob(jobId);
     if (cachedJob) {
         currentJob = cachedJob;
@@ -379,7 +444,7 @@ async function openJobDetail(jobId) {
         timeLogsContainer.innerHTML = `<p class="emptyState" style="font-size:0.78rem;">Loading...</p>`;
     }
 
-    // Always fetch fresh job from Supabase
+    // Fetch fresh job
     const { data: freshJob, error: jobError } = await db
         .from("Jobs")
         .select("*")
@@ -398,14 +463,18 @@ async function openJobDetail(jobId) {
     cacheJob(freshJob);
     populateDetailView(freshJob);
 
+    // Update the job card in the list (if visible)
     const card = jobCardsContainer.querySelector(`[data-id="${freshJob.id}"]`);
-    if (card) jobCardsContainer.replaceChild(buildJobCard(freshJob), card);
+    if (card) {
+        const newCard = buildJobCard(freshJob);
+        jobCardsContainer.replaceChild(newCard, card);
+    }
 
-    // Check if this user has an open session on this job
+    // Check for active session
     activeSession = await checkActiveSession(jobId);
     updateClockUI(activeSession);
 
-    // Load all time logs
+    // Load time logs
     loadTimeLogs(jobId);
 }
 
@@ -424,12 +493,12 @@ function populateDetailView(job) {
 
     document.getElementById("jobDetailTitle").textContent   = job.job_name;
     document.getElementById("detailJobName").textContent    = job.job_name    || "—";
-    document.getElementById("detailPhone").textContent = job.phone || "-";
+    document.getElementById("detailPhone").textContent      = job.phone       || "—";
     document.getElementById("detailAddress").textContent    = job.address     || "—";
     document.getElementById("detailClientName").textContent = job.client_name || "—";
     document.getElementById("detailStartDate").textContent  = job.start_date  || "—";
     document.getElementById("detailStock").textContent      = job.stock       || "—";
-    document.getElementById("detailFault").textContent      = job.fault_desc       || "—";
+    document.getElementById("detailFault").textContent      = job.fault_desc  || "—";
     document.getElementById("detailStatus").innerHTML       = `
         <span class="statusBadge" style="background-color:${bg}; color:${color};">
             ${capitalise(status)}
@@ -442,17 +511,14 @@ function populateDetailView(job) {
 }
 
 // === CLOCK UI ===
-// session = the open time_log row if clocked in, or null if not
 function updateClockUI(session) {
     const totalSeconds = currentJob?.total_time_seconds || 0;
 
     if (session && session.clocked_in_at) {
-        // Currently clocked in
         clockButton.classList.add("clockedIn");
         clockButtonText.textContent = "Clock Out";
         clockStatus.textContent = `Clocked in at ${formatTime(new Date(session.clocked_in_at))}`;
     } else {
-        // Not clocked in
         clockButton.classList.remove("clockedIn");
         clockButtonText.textContent = "Clock In";
         clockStatus.textContent = "Not clocked in";
@@ -469,10 +535,8 @@ clockButton.addEventListener("click", async () => {
     clockButton.disabled = true;
 
     if (activeSession) {
-        // — CLOCK OUT —
         await handleClockOut();
     } else {
-        // — CLOCK IN —
         await handleClockIn();
     }
 
@@ -486,15 +550,6 @@ async function handleClockIn() {
         || currentUser?.email?.split("@")[0]
         || "Unknown";
 
-    console.log("Attempting clock in with:", {
-        job_id:          currentJob.id,
-        user_id:         currentUser.id,
-        user_name:       displayName,
-        clocked_in_at:   now,
-        clocked_out_at:  null,
-        duration_seconds: 0
-    });
-
     const { data, error } = await db
         .from("time_logs")
         .insert([{
@@ -507,8 +562,6 @@ async function handleClockIn() {
         }])
         .select()
         .single();
-
-    console.log("Clock in result — data:", data, "error:", error);
 
     if (error || !data) {
         alert("Clock in failed: " + (error?.message || "no data returned"));
@@ -528,7 +581,7 @@ async function handleClockOut() {
     const sessionSeconds = Math.floor((clockOutTime - clockInTime) / 1000);
     const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
 
-    // Update the open session row with clock out time and duration
+    // Update time log
     const { error: logError } = await db
         .from("time_logs")
         .update({
@@ -543,7 +596,7 @@ async function handleClockOut() {
         return;
     }
 
-    // Update total time on the job
+    // Update job total time
     const { data: updatedJob, error: jobError } = await db
         .from("Jobs")
         .update({ total_time_seconds: newTotal })
@@ -554,25 +607,19 @@ async function handleClockOut() {
     if (!jobError && updatedJob) {
         currentJob = updatedJob;
         cacheJob(updatedJob);
-
         const card = jobCardsContainer.querySelector(`[data-id="${updatedJob.id}"]`);
         if (card) jobCardsContainer.replaceChild(buildJobCard(updatedJob), card);
     } else {
-        // Update local total even if Supabase had an issue
         currentJob = { ...currentJob, total_time_seconds: newTotal };
         cacheJob(currentJob);
     }
 
-    // Clear active session
     activeSession = null;
     updateClockUI(null);
-
-    // Refresh time logs
     loadTimeLogs(currentJob.id);
 }
 
-// === HANDLE CLOCK OUT FOR COMPLETE JOB ===
-// Simplified version used when completing a job mid-session
+// === HANDLE CLOCK OUT FOR COMPLETE ===
 async function handleClockOutForComplete() {
     const now            = new Date().toISOString();
     const clockInTime    = new Date(activeSession.clocked_in_at);
@@ -649,8 +696,8 @@ jobDetailEditToggle.addEventListener("click", () => {
         document.getElementById("editClientName").value = currentJob.client_name || "";
         document.getElementById("editStartDate").value  = currentJob.start_date  || "";
         document.getElementById("editStock").value      = currentJob.stock       || "";
-        document.getElementById("editFault").value      = currentJob.fault_desc       || "";
-        document.getElementById("editPhone").value = currentJob.phone || "";
+        document.getElementById("editFault").value      = currentJob.fault_desc  || "";
+        document.getElementById("editPhone").value      = currentJob.phone       || "";
 
         jobDetailView.style.display = "none";
         jobDetailEdit.style.display = "block";
@@ -666,8 +713,8 @@ saveEditButton.addEventListener("click", async () => {
         client_name: document.getElementById("editClientName").value.trim(),
         start_date:  document.getElementById("editStartDate").value || null,
         stock:       document.getElementById("editStock").value.trim(),
-        faultDescription: document.getElementById("editFault").value.trim(),
-        phone: document.getElementById("editPhone").value.trim()
+        fault_desc:  document.getElementById("editFault").value.trim(),
+        phone:       document.getElementById("editPhone").value.trim()
     };
 
     if (!updates.job_name) {
@@ -698,8 +745,12 @@ saveEditButton.addEventListener("click", async () => {
     populateDetailView(data);
     updateClockUI(activeSession);
 
+    // Update job card in list
     const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
+
+    // Refresh list to respect grouping/search
+    refreshJobListFromCache();
 
     jobDetailView.style.display = "block";
     jobDetailEdit.style.display = "none";
@@ -710,7 +761,6 @@ saveEditButton.addEventListener("click", async () => {
 completeJobButton.addEventListener("click", async () => {
     if (!confirm("Mark this job as complete?")) return;
 
-    // Auto clock out if currently clocked in
     if (activeSession) {
         await handleClockOutForComplete();
     }
@@ -732,8 +782,10 @@ completeJobButton.addEventListener("click", async () => {
     populateDetailView(data);
     updateClockUI(null);
 
+    // Update card and refresh list
     const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
+    refreshJobListFromCache();
 });
 
 // === UNCOMPLETE JOB ===
@@ -759,6 +811,7 @@ uncompleteJobButton.addEventListener("click", async () => {
 
     const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
+    refreshJobListFromCache();
 });
 
 // === HELPERS ===
