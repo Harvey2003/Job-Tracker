@@ -1,5 +1,5 @@
 // === SUPABASE INIT ===
-const SUPABASE_URL = "https://dbiilqwpdzilpdqzetyx.supabase.co/";
+const SUPABASE_URL = "https://dbiilqwpdzilpdqzetyx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_qbZRx_7dX4dg8niBS0TedA_grY5M0su";
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -816,7 +816,7 @@ completeJobButton.addEventListener("click", async () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-api-key': 'a7f3e9d2-4b6c-8f1a-9e2d-7c5b3a1f6d8e'  // <-- same as FUNCTION_API_KEY
+                    'x-api-key': 'b1c6ecc2-df03-48fc-9866-22872b3be83c'  // <-- same as FUNCTION_API_KEY
                 },
                 body: JSON.stringify({ jobId: currentJob.id }),
             }
