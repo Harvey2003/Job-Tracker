@@ -195,7 +195,7 @@ newJobForm.addEventListener("click", (e) => {
 });
 
 // === KEYBOARD SCROLL FIX ===
-document.querySelectorAll(".newJobInput, #notesInput").forEach(input => {
+document.querySelectorAll(".newJobInput, #inputFault").forEach(input => {
     input.addEventListener("focus", () => {
         setTimeout(() => {
             input.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -287,11 +287,12 @@ function buildJobCard(job) {
 // === CREATE JOB ===
 newJobButton.addEventListener("click", async () => {
     const jobName    = document.getElementById("inputJobName").value.trim();
-    const address    = document.getElementById("inputAddress").value.trim();
+    const faultDescription = document.getElementById("inputFault").value.trim();
     const clientName = document.getElementById("inputClientName").value.trim();
+    const address    = document.getElementById("inputAddress").value.trim();
+    const phone = document.getElementById("inputPhone")
     const startDate  = document.getElementById("startDate").value;
     const stock      = document.getElementById("inputStock").value.trim();
-    const notes      = document.getElementById("notesInput").value.trim();
 
     if (!jobName) {
         alert("Please enter a job name.");
@@ -309,8 +310,9 @@ newJobButton.addEventListener("click", async () => {
             client_name: clientName,
             start_date:  startDate || null,
             stock:       stock,
-            notes:       notes,
-            status:      "active"
+            fault_desc:       faultDescription,
+            status:      "active",
+            phone: phone
         }])
         .select()
         .single();
@@ -330,7 +332,7 @@ newJobButton.addEventListener("click", async () => {
     document.getElementById("inputClientName").value = "";
     document.getElementById("startDate").value       = "";
     document.getElementById("inputStock").value      = "";
-    document.getElementById("notesInput").value      = "";
+    document.getElementById("inputFault").value      = "";
 
     const empty = jobCardsContainer.querySelector(".emptyState");
     if (empty) empty.remove();
@@ -422,11 +424,12 @@ function populateDetailView(job) {
 
     document.getElementById("jobDetailTitle").textContent   = job.job_name;
     document.getElementById("detailJobName").textContent    = job.job_name    || "—";
+    document.getElementById("detailPhone").textContent = job.phone || "-";
     document.getElementById("detailAddress").textContent    = job.address     || "—";
     document.getElementById("detailClientName").textContent = job.client_name || "—";
     document.getElementById("detailStartDate").textContent  = job.start_date  || "—";
     document.getElementById("detailStock").textContent      = job.stock       || "—";
-    document.getElementById("detailNotes").textContent      = job.notes       || "—";
+    document.getElementById("detailFault").textContent      = job.fault_desc       || "—";
     document.getElementById("detailStatus").innerHTML       = `
         <span class="statusBadge" style="background-color:${bg}; color:${color};">
             ${capitalise(status)}
@@ -646,7 +649,8 @@ jobDetailEditToggle.addEventListener("click", () => {
         document.getElementById("editClientName").value = currentJob.client_name || "";
         document.getElementById("editStartDate").value  = currentJob.start_date  || "";
         document.getElementById("editStock").value      = currentJob.stock       || "";
-        document.getElementById("editNotes").value      = currentJob.notes       || "";
+        document.getElementById("editFault").value      = currentJob.fault_desc       || "";
+        document.getElementById("editPhone").value = currentJob.phone || "";
 
         jobDetailView.style.display = "none";
         jobDetailEdit.style.display = "block";
@@ -662,7 +666,8 @@ saveEditButton.addEventListener("click", async () => {
         client_name: document.getElementById("editClientName").value.trim(),
         start_date:  document.getElementById("editStartDate").value || null,
         stock:       document.getElementById("editStock").value.trim(),
-        notes:       document.getElementById("editNotes").value.trim(),
+        faultDescription:       document.getElementById("editFault").value.trim(),
+        phone: document.getElementById("editPhone").value.trim()
     };
 
     if (!updates.job_name) {

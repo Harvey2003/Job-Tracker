@@ -97,12 +97,20 @@
                 <input placeholder="e.g. Kitchen Rewire" class="newJobInput" id="inputJobName" />
             </div>
             <div class="formGroup">
-                <label class="formHeader">Address</label>
-                <input placeholder="e.g. 12 Example St" class="newJobInput" id="inputAddress" />
+                <label class="formHeader">Fault Description</label>
+                <textarea placeholder="Job Description" id="inputFault"></textarea>
             </div>
             <div class="formGroup">
                 <label class="formHeader">Client Name</label>
                 <input placeholder="e.g. John Smith" class="newJobInput" id="inputClientName" />
+            </div>
+            <div class="formGroup">
+                <label class="formHeader">Address</label>
+                <input placeholder="e.g. 12 Example St" class="newJobInput" id="inputAddress" />
+            </div>
+            <div class="formGroup">
+                <label class="formHeader">Contact Phone</label>
+                <input placeholder="0220000000" class="newJobInput" id="inputPhone" />
             </div>
             <div class="formGroup">
                 <label class="formHeader">Start Date</label>
@@ -111,10 +119,6 @@
             <div class="formGroup">
                 <label class="formHeader">Stock</label>
                 <input placeholder="e.g. Cable, switches" class="newJobInput" id="inputStock" />
-            </div>
-            <div class="formGroup">
-                <label class="formHeader">Notes</label>
-                <textarea placeholder="Any additional notes" id="notesInput"></textarea>
             </div>
             <button class="formButton" id="newJobButton">
                 <i class="fa-solid fa-check"></i> Create Job
@@ -154,6 +158,10 @@
                     <span class="detailValue" id="detailJobName"></span>
                 </div>
                 <div class="detailRow">
+                    <span class="detailLabel">Fault Description</span>
+                    <span class="detailValue" id="detailFault"></span>
+                </div>
+                <div class="detailRow">
                     <span class="detailLabel">Address</span>
                     <span class="detailValue" id="detailAddress"></span>
                 </div>
@@ -162,16 +170,16 @@
                     <span class="detailValue" id="detailClientName"></span>
                 </div>
                 <div class="detailRow">
+                    <span class="detailLabel">Contact Phone</span>
+                    <span class="detailValue" id="detailPhone"></span>
+                </div>
+                <div class="detailRow">
                     <span class="detailLabel">Start Date</span>
                     <span class="detailValue" id="detailStartDate"></span>
                 </div>
                 <div class="detailRow">
                     <span class="detailLabel">Stock</span>
                     <span class="detailValue" id="detailStock"></span>
-                </div>
-                <div class="detailRow">
-                    <span class="detailLabel">Notes</span>
-                    <span class="detailValue" id="detailNotes"></span>
                 </div>
                 <div class="detailRow">
                     <span class="detailLabel">Status</span>
@@ -186,12 +194,20 @@
                     <input class="newJobInput" id="editJobName" />
                 </div>
                 <div class="formGroup">
-                    <label class="formHeader">Address</label>
-                    <input class="newJobInput" id="editAddress" />
+                    <label class="formHeader">Fault Description</label>
+                    <input class="newJobInput" id="editFault" />
                 </div>
                 <div class="formGroup">
                     <label class="formHeader">Client Name</label>
                     <input class="newJobInput" id="editClientName" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Address</label>
+                    <input class="newJobInput" id="editAddress" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Contact Phone</label>
+                    <input class="newJobInput" id="editPhone" />
                 </div>
                 <div class="formGroup">
                     <label class="formHeader">Start Date</label>
@@ -200,10 +216,6 @@
                 <div class="formGroup">
                     <label class="formHeader">Stock</label>
                     <input class="newJobInput" id="editStock" />
-                </div>
-                <div class="formGroup">
-                    <label class="formHeader">Notes</label>
-                    <textarea class="newJobInput" id="editNotes" style="height:24vw; padding-top:3vw; resize:none;"></textarea>
                 </div>
                 <button class="formButton" id="saveEditButton">
                     <i class="fa-solid fa-check"></i> Save Changes
