@@ -267,6 +267,73 @@ body {
     margin-bottom: 2vw;
 }
 
+/* === SEARCH BAR === */
+#searchWrapper {
+    position: relative;
+    margin-bottom: 2vw;
+    display: flex;
+    align-items: center;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 4vw;
+    color: #9ca3af;
+    font-size: 1rem;
+    pointer-events: none;
+    z-index: 1;
+}
+
+#searchInput {
+    width: 100%;
+    height: 52px;
+    padding: 0 12vw 0 12vw;  /* space for icon and clear button */
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background-color: #ffffff;
+    font-size: 0.95rem;
+    color: #111827;
+    outline: none;
+    transition: border 0.15s ease, box-shadow 0.15s ease;
+    -webkit-appearance: none;
+}
+
+#searchInput:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    background-color: #ffffff;
+}
+
+#searchInput::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+}
+
+.clearSearchButton {
+    position: absolute;
+    right: 3vw;
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    z-index: 2;
+}
+
+.clearSearchButton:hover,
+.clearSearchButton:active {
+    background-color: #f3f4f6;
+    color: #111827;
+}
+
 /* === ADD JOB CARD === */
 #addJob {
     border: 2px dashed #e5e7eb;
@@ -357,13 +424,72 @@ body {
     color: #d97706;
 }
 
-/* === NEW JOB FORM === */
+/* === STATUS GROUP HEADERS (collapsible) === */
+.statusGroupHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 6vw 0 3vw 0;
+    padding-bottom: 2vw;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.statusGroupHeader:first-of-type {
+    margin-top: 2vw;
+}
+
+.statusGroupTitle {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    display: flex;
+    align-items: center;
+}
+
+.statusGroupCount {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+    background-color: #f3f4f6;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    margin-left: 8px;
+}
+
+.groupChevron {
+    margin-left: auto;
+    font-size: 0.9rem;
+    color: #9ca3af;
+    transition: transform 0.2s ease;
+}
+
+.statusGroupHeader.collapsed .groupChevron {
+    transform: rotate(-90deg);
+}
+
+/* Hide job cards when group is collapsed */
+.statusGroupHeader.collapsed + .jobCard,
+.statusGroupHeader.collapsed ~ .jobCard:not(.statusGroupHeader ~ .statusGroupHeader) {
+    /* This selector is tricky; we'll handle via JS by toggling a class on cards */
+}
+
+/* We'll use JS to hide/show cards with a class */
+.jobCard.group-collapsed {
+    display: none;
+}
+
+/* === NEW JOB FORM (refined) === */
 #newJobForm {
     display: none;
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(6px);
     z-index: 400;
     align-items: flex-end;
     justify-content: center;
@@ -377,24 +503,32 @@ body {
 #formCard {
     background-color: #ffffff;
     width: 100%;
-    max-height: 88dvh;
-    border-radius: 24px 24px 0 0;
-    padding: 5vw 6vw 8vw 6vw;
+    max-height: 85dvh;
+    border-radius: 28px 28px 0 0;
+    padding: 0 6vw 8vw 6vw;
     display: flex;
     flex-direction: column;
     gap: 0;
     overflow-y: auto;
-    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: none;
+    animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 #formCard::before {
     content: '';
     display: block;
-    width: 40px;
-    height: 4px;
+    width: 48px;
+    height: 5px;
     background-color: #e5e7eb;
-    border-radius: 2px;
-    margin: 0 auto 5vw auto;
+    border-radius: 3px;
+    margin: 16px auto 24px auto;
     flex-shrink: 0;
 }
 
@@ -402,129 +536,121 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 5vw;
+    margin-bottom: 28px;
 }
 
 #formTitle {
-    font-size: 1.1rem;
+    font-size: 1.4rem;
     font-weight: 700;
     color: #111827;
+    letter-spacing: -0.02em;
 }
 
 #formClose {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
     background-color: #f3f4f6;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #6b7280;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 1.1rem;
+    transition: all 0.15s;
     -webkit-tap-highlight-color: transparent;
 }
 
 #formClose:active {
     background-color: #e5e7eb;
+    color: #111827;
 }
 
-/* === FORM FIELDS === */
+/* Form fields */
 .formGroup {
     display: flex;
     flex-direction: column;
-    gap: 1.5vw;
-    margin-bottom: 4vw;
+    gap: 8px;
+    margin-bottom: 20px;
 }
 
 .formHeader {
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: #6b7280;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
 }
 
-.newJobInput {
-    height: 48px;
-    font-size: 0.95rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 0 4vw;
-    background-color: #f9fafb;
+.newJobInput, textarea {
+    height: 52px;
+    font-size: 1rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 0 16px;
+    background-color: #fafbfc;
     color: #111827;
     outline: none;
-    transition: border 0.15s ease;
+    transition: border 0.15s ease, background 0.15s;
     width: 100%;
-}
-
-.newJobInput:focus {
-    border-color: #f59e0b;
-    background-color: #ffffff;
-}
-
-#notesInput {
-    height: 24vw;
-    font-size: 0.95rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 3vw 4vw;
-    background-color: #f9fafb;
-    color: #111827;
-    outline: none;
-    transition: border 0.15s ease;
-    resize: none;
     font-family: 'Inter', sans-serif;
-    width: 100%;
 }
 
-#notesInput:focus {
+textarea {
+    height: 100px;
+    padding: 14px 16px;
+    resize: vertical;
+}
+
+.newJobInput:focus, textarea:focus {
     border-color: #f59e0b;
     background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08);
 }
 
-#startDate,
-#editStartDate {
+#startDate, #editStartDate {
     color: #111827;
     cursor: pointer;
 }
 
 #startDate::-webkit-calendar-picker-indicator,
 #editStartDate::-webkit-calendar-picker-indicator {
-    opacity: 0.5;
+    opacity: 0.6;
     cursor: pointer;
+    padding: 4px;
 }
 
-/* === FORM BUTTON === */
+/* Form button */
 .formButton {
     width: 100%;
-    height: 52px;
+    height: 56px;
     border: none;
-    border-radius: 12px;
+    border-radius: 16px;
     background-color: #111827;
     color: #ffffff;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    margin-top: 2vw;
+    margin-top: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 2vw;
-    transition: background-color 0.15s ease;
+    gap: 8px;
+    transition: background-color 0.15s ease, transform 0.1s;
     -webkit-tap-highlight-color: transparent;
     flex-shrink: 0;
 }
 
 .formButton:active {
     background-color: #374151;
+    transform: scale(0.98);
 }
 
 #newJobButton {
     background-color: #f59e0b;
     color: #111827;
     font-weight: 700;
-    margin-top: 4vw;
+    margin-top: 24px;
 }
 
 #newJobButton:active {
@@ -717,7 +843,6 @@ body {
     background-color: #d97706;
 }
 
-/* Complete button */
 #completeJobButton {
     background-color: #16a34a !important;
     color: #ffffff;
@@ -795,88 +920,10 @@ body {
     text-align: right;
 }
 
-/* Uncomplete button */
 #uncompleteJobButton {
     background-color: #6b7280 !important;
 }
 
 #uncompleteJobButton:active {
     background-color: #4b5563 !important;
-}
-
-/* Search bar */
-#searchWrapper {
-    position: relative;
-    margin-bottom: 4vw;
-    display: flex;
-    align-items: center;
-}
-
-.searchIcon {
-    position: absolute;
-    left: 4vw;
-    color: #9ca3af;
-    font-size: 1rem;
-    pointer-events: none;
-}
-
-#searchInput {
-    width: 100%;
-    height: 52px;
-    padding: 0 4vw 0 12vw;
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    background-color: #ffffff;
-    font-size: 0.95rem;
-    color: #111827;
-    outline: none;
-    transition: border 0.15s ease;
-    -webkit-appearance: none;
-}
-
-#searchInput:focus {
-    border-color: #f59e0b;
-    background-color: #ffffff;
-}
-
-#searchInput::placeholder {
-    color: #9ca3af;
-    font-weight: 400;
-}
-
-/* Status group headers */
-.statusGroupHeader {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin: 6vw 0 3vw 0;
-    padding-bottom: 2vw;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.statusGroupHeader:first-of-type {
-    margin-top: 2vw;
-}
-
-.statusGroupTitle {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #374151;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-
-.statusGroupCount {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #6b7280;
-    background-color: #f3f4f6;
-    padding: 0.2rem 0.6rem;
-    border-radius: 20px;
-}
-
-/* Adjust spacing when no jobs in group */
-.statusGroupHeader + .emptyState {
-    margin-top: 0;
-    margin-bottom: 4vw;
 }

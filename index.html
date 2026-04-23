@@ -70,10 +70,15 @@
 
     <!-- MAIN CONTENT -->
     <div id="jobLists">
+        <!-- Search bar with clear button -->
         <div id="searchWrapper">
-    <i class="fa-solid fa-magnifying-glass searchIcon"></i>
-    <input type="text" id="searchInput" placeholder="Search jobs, clients, or addresses..." />
-    </div>
+            <i class="fa-solid fa-magnifying-glass searchIcon"></i>
+            <input type="text" id="searchInput" placeholder="Search jobs, clients, or addresses..." enterkeyhint="search" />
+            <button id="clearSearchButton" class="clearSearchButton" style="display:none;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
         <div class="jobCard" id="addJob">
             <div id="addJobInner">
                 <div id="addJobIcon">
