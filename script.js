@@ -69,10 +69,9 @@ let groupCollapsedState = {
     completed: false
 };
 
-// Stock state
-let newJobStock = [];        // create form
-let editJobStock = [];       // edit form
-let detailStockArray = [];   // used in detail view for inline add
+let newJobStock = [];
+let editJobStock = [];
+let detailStockArray = [];
 
 // === LOCAL STORAGE HELPERS ===
 function cacheJob(job) {
@@ -114,10 +113,6 @@ function getCachedAllJobs() {
 function parseStockArray(stockStr) {
     if (!stockStr) return [];
     return stockStr.split(',').map(s => s.trim()).filter(s => s.length > 0);
-}
-
-function stockArrayToString(arr) {
-    return arr.join(', ');
 }
 
 function escapeHtml(text) {
@@ -251,7 +246,7 @@ newJobForm.addEventListener("click", (e) => {
     if (e.target === newJobForm) closeForm();
 });
 
-// Create form stock management
+// Create stock handling
 document.getElementById('addStockItemBtn').addEventListener('click', () => {
     const input = document.getElementById('inputStockItem');
     const item = input.value.trim();
@@ -315,9 +310,9 @@ function getJobStatus(job) {
     if (job.status === "completed") return "completed";
     if (job.start_date) {
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        today.setHours(0,0,0,0);
         const start = new Date(job.start_date);
-        start.setHours(0, 0, 0, 0);
+        start.setHours(0,0,0,0);
         if (start > today) return "upcoming";
     }
     return "active";
@@ -332,9 +327,15 @@ function getStatusStyle(status) {
     }
 }
 
-// === LOAD JOBS ===
+// === LOAD JOBS (with skeleton) ===
 async function loadJobs() {
-    jobCardsContainer.innerHTML = `<p class="emptyState">Loading jobs...</p>`;
+    // Show skeleton cards
+    jobCardsContainer.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+        const skel = document.createElement('div');
+        skel.className = 'skeleton';
+        jobCardsContainer.appendChild(skel);
+    }
 
     const { data: jobs, error } = await db
         .from("Jobs")
@@ -463,13 +464,13 @@ function refreshJobListFromCache() {
 
 // === CREATE JOB ===
 newJobButton.addEventListener("click", async () => {
-    const jobName    = document.getElementById("inputJobName").value.trim();
+    const jobName         = document.getElementById("inputJobName").value.trim();
     const faultDescription = document.getElementById("inputFault").value.trim();
-    const clientName = document.getElementById("inputClientName").value.trim();
-    const address    = document.getElementById("inputAddress").value.trim();
-    const phone      = document.getElementById("inputPhone").value.trim();
-    const startDate  = document.getElementById("startDate").value;
-    const stock      = newJobStock.join(', ');
+    const clientName      = document.getElementById("inputClientName").value.trim();
+    const address         = document.getElementById("inputAddress").value.trim();
+    const phone           = document.getElementById("inputPhone").value.trim();
+    const startDate       = document.getElementById("startDate").value;
+    const stock           = newJobStock.join(', ');
 
     if (!jobName) {
         alert("Please enter a job name.");
@@ -507,7 +508,6 @@ newJobButton.addEventListener("click", async () => {
     cacheAllJobs(currentJobs);
     renderJobList(currentJobs);
 
-    // Reset form and stock
     document.getElementById("inputJobName").value    = "";
     document.getElementById("inputAddress").value    = "";
     document.getElementById("inputClientName").value = "";
@@ -544,7 +544,6 @@ async function openJobDetail(jobId) {
     jobDetailView.style.display = "block";
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
-    // Hide inline add form
     document.getElementById('addStockInlineForm').style.display = 'none';
     document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
 
@@ -610,9 +609,9 @@ function populateDetailView(job) {
         </span>
     `;
 
-    // Stock display with chips
+    // Stock chips
     const stockArray = parseStockArray(job.stock || '');
-    detailStockArray = [...stockArray];  // for inline add
+    detailStockArray = [...stockArray];
     const stockContainer = document.getElementById('stockChipsView');
     stockContainer.innerHTML = '';
     if (stockArray.length > 0) {
@@ -623,7 +622,7 @@ function populateDetailView(job) {
             stockContainer.appendChild(chip);
         });
     }
-    // Ensure "Add Stock" button visible (only if not completed)
+
     if (isCompleted) {
         document.getElementById('addStockInlineBtn').style.display = 'none';
         document.getElementById('addStockInlineForm').style.display = 'none';
@@ -637,7 +636,7 @@ function populateDetailView(job) {
     document.getElementById("clockSection").style.display = isCompleted ? "none" : "flex";
 }
 
-// === Inline Add Stock (detail view) ===
+// Inline add stock
 document.getElementById('addStockInlineBtn').addEventListener('click', () => {
     document.getElementById('addStockInlineForm').style.display = 'flex';
     document.getElementById('addStockInlineBtn').style.display = 'none';
@@ -664,7 +663,7 @@ document.getElementById('addStockInlineConfirmBtn').addEventListener('click', as
     if (!error) {
         currentJob.stock = newStockStr;
         cacheJob(currentJob);
-        populateDetailView(currentJob);  // refresh chips
+        populateDetailView(currentJob);
         const card = jobCardsContainer.querySelector(`[data-id="${currentJob.id}"]`);
         if (card) jobCardsContainer.replaceChild(buildJobCard(currentJob), card);
         input.value = '';
@@ -842,7 +841,6 @@ jobDetailEditToggle.addEventListener("click", () => {
         jobDetailEdit.style.display = "none";
         jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
     } else {
-        // Populate edit form fields
         document.getElementById("editJobName").value    = currentJob.job_name    || "";
         document.getElementById("editAddress").value    = currentJob.address     || "";
         document.getElementById("editClientName").value = currentJob.client_name || "";
@@ -850,7 +848,6 @@ jobDetailEditToggle.addEventListener("click", () => {
         document.getElementById("editFault").value      = currentJob.fault_desc  || "";
         document.getElementById("editPhone").value      = currentJob.phone       || "";
 
-        // Stock edit
         editJobStock = parseStockArray(currentJob.stock || '');
         renderStockChips('stockChipsEdit', editJobStock, removeEditJobStock);
         document.getElementById('editStockItemInput').value = '';
@@ -861,7 +858,6 @@ jobDetailEditToggle.addEventListener("click", () => {
     }
 });
 
-// Edit mode stock management
 document.getElementById('editAddStockItemBtn').addEventListener('click', () => {
     const input = document.getElementById('editStockItemInput');
     const item = input.value.trim();
@@ -962,7 +958,7 @@ completeJobButton.addEventListener("click", async () => {
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
     refreshJobListFromCache();
 
-    // --- SEND EMAIL via EmailJS ---
+    // Email sending
     try {
         completeJobButton.disabled = true;
         completeJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Sending email...';

@@ -44,7 +44,6 @@ body {
 #loginCompany {
     font-size: 1.1rem;
     font-weight: 800;
-    color: #f59e0b;
     margin-bottom: 2vw;
     letter-spacing: -0.5px;
 }
@@ -116,7 +115,6 @@ body {
 #companyName {
     font-size: 1.1rem;
     font-weight: 800;
-    color: #f59e0b;
     letter-spacing: -0.5px;
 }
 
@@ -294,13 +292,13 @@ body {
     font-size: 0.95rem;
     color: #111827;
     outline: none;
-    transition: border 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
     -webkit-appearance: none;
 }
 
 #searchInput:focus {
     border-color: #f59e0b;
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
     background-color: #ffffff;
 }
 
@@ -338,13 +336,14 @@ body {
 #addJob {
     border: 2px dashed #e5e7eb;
     background-color: transparent;
-    transition: all 0.15s ease;
+    transition: all 0.25s ease;
 }
 
 #addJob:hover,
 #addJob:active {
     border-color: #f59e0b;
     background-color: #fffbeb;
+    transform: scale(1.01);
 }
 
 #addJobInner {
@@ -386,12 +385,13 @@ body {
     padding: 4.5vw;
     border: 1px solid #e5e7eb;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: transform 0.1s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
 .jobCard:active {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.08);
     border-color: #f59e0b;
 }
 
@@ -418,10 +418,10 @@ body {
 .statusBadge {
     font-size: 0.7rem;
     font-weight: 600;
-    padding: 0.3em 0.8em;
-    border-radius: 20px;
-    background-color: #fef3c7;
-    color: #d97706;
+    padding: 0.35em 1em;
+    border-radius: 100px;
+    letter-spacing: 0.02em;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
 }
 
 /* === STATUS GROUP HEADERS (collapsible) === */
@@ -476,6 +476,21 @@ body {
     display: none;
 }
 
+/* === SKELETON LOADER === */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 12px;
+    height: 72px;
+    margin-bottom: 3vw;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
 /* === NEW JOB FORM (refined) === */
 #newJobForm {
     display: none;
@@ -503,7 +518,7 @@ body {
     flex-direction: column;
     gap: 0;
     overflow-y: auto;
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-bottom: none;
     animation: slideUp 0.25s ease;
@@ -517,12 +532,13 @@ body {
 #formCard::before {
     content: '';
     display: block;
-    width: 48px;
+    width: 56px;
     height: 5px;
-    background-color: #e5e7eb;
-    border-radius: 3px;
-    margin: 16px auto 24px auto;
+    background-color: #d1d5db;
+    border-radius: 100px;
+    margin: 12px auto 20px auto;
     flex-shrink: 0;
+    opacity: 0.8;
 }
 
 #formTitleRow {
@@ -662,18 +678,19 @@ textarea {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background-color: #fef3c7;
-    color: #92400e;
-    font-size: 0.82rem;
+    background-color: #fff7ed;
+    color: #9a3412;
+    font-size: 0.8rem;
     font-weight: 500;
-    padding: 6px 12px;
+    padding: 6px 14px;
     border-radius: 20px;
-    border: 1px solid #fcd34d;
+    border: 1px solid #fed7aa;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 
 .stockChip .removeChip {
     cursor: pointer;
-    color: #92400e;
+    color: #b45309;
     font-size: 0.75rem;
     margin-left: 2px;
     transition: color 0.15s;
@@ -839,9 +856,9 @@ textarea {
 
 /* === CLOCK SECTION === */
 #clockSection {
-    background-color: #111827;
-    border-radius: 16px;
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
     border: 1px solid #1f2937;
+    border-radius: 16px;
     padding: 5vw;
     display: flex;
     flex-direction: column;

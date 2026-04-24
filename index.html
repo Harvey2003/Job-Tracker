@@ -20,7 +20,9 @@
     <!-- LOGIN SCREEN -->
     <div id="loginScreen">
         <div id="loginCard">
-            <p id="loginCompany">ElectricM8</p>
+            <p id="loginCompany">
+                <span style="color:#dc2626;">Electric</span><span style="color:#16a34a;">M8</span>
+            </p>
             <p id="loginTitle">Sign in to JobTrack</p>
             <p id="loginSub">Use your account credentials to continue</p>
             <div class="formGroup">
@@ -40,7 +42,10 @@
 
     <!-- TOP NAV -->
     <div id="topNavContainer">
-        <span id="companyName">ElectricM8</span>
+        <span id="companyName">
+            <i class="fa-solid fa-bolt" style="color:#f59e0b; margin-right:4px;"></i>
+            <span style="color:#dc2626;">Electric</span><span style="color:#16a34a;">M8</span>
+        </span>
         <div id="welcomeMessage">
             <p id="welcomeTitle">Welcome back</p>
             <p id="welcomeSub">...</p>
@@ -70,7 +75,6 @@
 
     <!-- MAIN CONTENT -->
     <div id="jobLists">
-        <!-- Search bar with clear button -->
         <div id="searchWrapper">
             <i class="fa-solid fa-magnifying-glass searchIcon"></i>
             <input type="text" id="searchInput" placeholder="Search jobs, clients, or addresses..." enterkeyhint="search" />
@@ -196,7 +200,7 @@
                     <span class="detailLabel">Start Date</span>
                     <span class="detailValue" id="detailStartDate"></span>
                 </div>
-                <!-- Stock display with chips and inline add -->
+                <!-- Stock display with chips + inline add -->
                 <div class="detailRow">
                     <span class="detailLabel">Stock</span>
                     <div class="detailValue" id="detailStock">
