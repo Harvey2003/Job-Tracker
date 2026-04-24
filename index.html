@@ -125,9 +125,19 @@
                 <label class="formHeader">Start Date</label>
                 <input type="date" class="newJobInput" id="startDate" />
             </div>
+            <!-- Stock chip input (create form) -->
             <div class="formGroup">
-                <label class="formHeader">Stock</label>
-                <input placeholder="e.g. Cable, switches" class="newJobInput" id="inputStock" />
+                <label class="formHeader">Stock / Materials Needed</label>
+                <div id="stockInputContainer" class="stockInputContainer">
+                    <div id="stockChipsCreate" class="stockChips"></div>
+                    <div class="stockInputRow">
+                        <input placeholder="e.g. Cable, switches..." class="newJobInput" id="inputStockItem" />
+                        <button type="button" class="stockAddBtn" id="addStockItemBtn">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                <input type="hidden" id="inputStock" />
             </div>
             <button class="formButton" id="newJobButton">
                 <i class="fa-solid fa-check"></i> Create Job
@@ -186,9 +196,22 @@
                     <span class="detailLabel">Start Date</span>
                     <span class="detailValue" id="detailStartDate"></span>
                 </div>
+                <!-- Stock display with chips and inline add -->
                 <div class="detailRow">
                     <span class="detailLabel">Stock</span>
-                    <span class="detailValue" id="detailStock"></span>
+                    <div class="detailValue" id="detailStock">
+                        <div id="stockChipsView" class="stockChips"></div>
+                        <button class="addStockInlineBtn" id="addStockInlineBtn">
+                            <i class="fa-solid fa-plus"></i> Add Stock
+                        </button>
+                        <div id="addStockInlineForm" class="addStockInlineForm" style="display:none;">
+                            <input placeholder="Item name..." class="newJobInput" id="newStockItemInput" />
+                            <button class="stockAddBtn" id="addStockInlineConfirmBtn">
+                                <i class="fa-solid fa-check"></i> Add
+                            </button>
+                            <button class="stockAddBtn cancelBtn" id="cancelAddStockBtn">Cancel</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="detailRow">
                     <span class="detailLabel">Status</span>
@@ -222,9 +245,19 @@
                     <label class="formHeader">Start Date</label>
                     <input type="date" class="newJobInput" id="editStartDate" />
                 </div>
+                <!-- Stock chip input (edit mode) -->
                 <div class="formGroup">
-                    <label class="formHeader">Stock</label>
-                    <input class="newJobInput" id="editStock" />
+                    <label class="formHeader">Stock / Materials Needed</label>
+                    <div id="editStockContainer" class="stockInputContainer">
+                        <div id="stockChipsEdit" class="stockChips"></div>
+                        <div class="stockInputRow">
+                            <input placeholder="Add item..." class="newJobInput" id="editStockItemInput" />
+                            <button type="button" class="stockAddBtn" id="editAddStockItemBtn">
+                                <i class="fa-solid fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                    <input type="hidden" id="editStock" />
                 </div>
                 <button class="formButton" id="saveEditButton">
                     <i class="fa-solid fa-check"></i> Save Changes

@@ -287,7 +287,7 @@ body {
 #searchInput {
     width: 100%;
     height: 52px;
-    padding: 0 12vw 0 12vw;  /* space for icon and clear button */
+    padding: 0 12vw 0 12vw;
     border: 1px solid #e5e7eb;
     border-radius: 14px;
     background-color: #ffffff;
@@ -472,13 +472,6 @@ body {
     transform: rotate(-90deg);
 }
 
-/* Hide job cards when group is collapsed */
-.statusGroupHeader.collapsed + .jobCard,
-.statusGroupHeader.collapsed ~ .jobCard:not(.statusGroupHeader ~ .statusGroupHeader) {
-    /* This selector is tricky; we'll handle via JS by toggling a class on cards */
-}
-
-/* We'll use JS to hide/show cards with a class */
 .jobCard.group-collapsed {
     display: none;
 }
@@ -655,6 +648,111 @@ textarea {
 
 #newJobButton:active {
     background-color: #d97706;
+}
+
+/* === STOCK CHIPS === */
+.stockChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.stockChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: #fef3c7;
+    color: #92400e;
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid #fcd34d;
+}
+
+.stockChip .removeChip {
+    cursor: pointer;
+    color: #92400e;
+    font-size: 0.75rem;
+    margin-left: 2px;
+    transition: color 0.15s;
+}
+
+.stockChip .removeChip:hover {
+    color: #b91c1c;
+}
+
+.stockInputRow {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.stockInputRow .newJobInput {
+    flex: 1;
+    height: 44px;
+    margin-bottom: 0;
+}
+
+.stockAddBtn {
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 10px;
+    background-color: #f59e0b;
+    color: #111827;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.stockAddBtn:active {
+    background-color: #d97706;
+}
+
+.cancelBtn {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.addStockInlineBtn {
+    background: none;
+    border: 1px dashed #f59e0b;
+    color: #f59e0b;
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.addStockInlineBtn:active {
+    background-color: #fffbeb;
+}
+
+.addStockInlineForm {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.addStockInlineForm .newJobInput {
+    flex: 1;
+    min-width: 140px;
+    height: 40px;
+    margin-bottom: 0;
 }
 
 /* === EMPTY STATE === */
