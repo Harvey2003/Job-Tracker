@@ -4,6 +4,9 @@ const SUPABASE_ANON_KEY = "sb_publishable_qbZRx_7dX4dg8niBS0TedA_grY5M0su";
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// === EMAILJS INIT ===
+emailjs.init("YOUR_PUBLIC_KEY");   // Replace with your actual public key
+
 // === SERVICE WORKER ===
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/Job-Tracker/service-worker.js")
@@ -805,27 +808,75 @@ completeJobButton.addEventListener("click", async () => {
     if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
     refreshJobListFromCache();
 
-// --- SEND EMAIL via Edge Function (API key auth) ---
+    // --- SEND EMAIL via EmailJS ---
     try {
         completeJobButton.disabled = true;
         completeJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Sending email...';
 
-        const response = await fetch(
-            `${SUPABASE_URL}/functions/v1/send-job-completion-email`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': 'b1c6ecc2-df03-48fc-9866-22872b3be83c'  // <-- same as FUNCTION_API_KEY
-                },
-                body: JSON.stringify({ jobId: currentJob.id }),
-            }
+        // Fetch time logs for the table
+        const { data: logs } = await db
+            .from("time_logs")
+            .select("*")
+            .eq("job_id", currentJob.id)
+            .order("clocked_in_at", { ascending: false });
+
+        const totalSeconds = logs?.reduce((sum, log) => sum + (log.duration_seconds || 0), 0) || 0;
+        const totalHours = (totalSeconds / 3600).toFixed(2);
+
+        // Short formatting functions
+        const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-NZ", { day:"numeric", month:"short" }) : "—";
+        const fmtTime = (d) => new Date(d).toLocaleTimeString("en-NZ", { hour:"2-digit", minute:"2-digit" });
+        const fmtDur = (s) => {
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            return h > 0 ? `${h}h ${m}m` : `${m}m`;
+        };
+
+        // Build the time sessions table as an HTML string
+        const tableHtml = logs && logs.length > 0
+            ? `<table border="0" cellpadding="8" style="border-collapse:collapse;">
+                <thead><tr style="background:#f0f0f0;">
+                    <th>User</th><th>Date</th><th>In</th><th>Out</th><th>Duration</th>
+                </tr></thead>
+                <tbody>
+                    ${logs.map(log => `
+                        <tr>
+                            <td>${log.user_name || "—"}</td>
+                            <td>${fmtDate(log.clocked_in_at)}</td>
+                            <td>${fmtTime(log.clocked_in_at)}</td>
+                            <td>${log.clocked_out_at ? fmtTime(log.clocked_out_at) : "—"}</td>
+                            <td>${fmtDur(log.duration_seconds || 0)}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>`
+            : "No time sessions recorded.";
+
+        // Prepare template parameters (must match template placeholders)
+        const templateParams = {
+            to_email: "ashleywork02@gmail.com",   // recipient email
+            job_name: currentJob.job_name || "—",
+            client_name: currentJob.client_name || "—",
+            address: currentJob.address || "—",
+            phone: currentJob.phone || "—",
+            start_date: currentJob.start_date || "—",
+            stock: currentJob.stock || "—",
+            fault_desc: currentJob.fault_desc || "—",
+            total_time: `${totalHours} hours (${totalSeconds} sec)`,
+            time_sessions_table: tableHtml
+        };
+
+        const response = await emailjs.send(
+            "service_nlma6da",    // replace with your Service ID
+            "template_y2ineka",   // replace with your Template ID
+            templateParams
         );
 
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Failed to send email');
-
-        alert('✅ Job marked complete and summary email sent.');
+        if (response.status === 200) {
+            alert('✅ Job marked complete and summary email sent.');
+        } else {
+            throw new Error('EmailJS returned an unexpected status');
+        }
     } catch (err) {
         console.error('Email error:', err);
         alert(`⚠️ Job completed, but email failed: ${err.message}`);
