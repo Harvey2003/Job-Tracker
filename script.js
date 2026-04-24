@@ -5,7 +5,7 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // === EMAILJS INIT ===
-emailjs.init("YOUR_PUBLIC_KEY");   // Replace with your actual public key
+emailjs.init("ASqDA9Nflas4yZppr");   // Replace with your actual public key
 
 // === SERVICE WORKER ===
 if ("serviceWorker" in navigator) {
