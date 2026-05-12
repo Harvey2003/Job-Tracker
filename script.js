@@ -5,23 +5,16 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // === EMAILJS INIT ===
-emailjs.init("ASqDA9Nflas4yZppr");  // Replace with your public key
+emailjs.init("ASqDA9Nflas4yZppr");  // REPLACE WITH YOUR PUBLIC KEY
 
-// === SERVICE WORKER (optional) ===
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/Job-Tracker/service-worker.js")
-        .then(() => console.log("SW registered"))
-        .catch((err) => console.log("SW failed:", err));
-}
-
-// === FULLSCREEN (PWA only) ===
-if (window.matchMedia("(display-mode: standalone)").matches) {
-    document.addEventListener("click", function triggerFullscreen() {
-        const el = document.documentElement;
-        if (el.requestFullscreen) el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        document.removeEventListener("click", triggerFullscreen);
-    }, { once: true });
+// === HELPER: format duration ===
+function formatDuration(sec) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    if (h) return `${h}h ${m}m`;
+    if (m) return `${m}m ${s}s`;
+    return `${s}s`;
 }
 
 // === DOM ELEMENTS ===
@@ -57,8 +50,9 @@ const saveEditButton      = document.getElementById("saveEditButton");
 const timeLogsContainer   = document.getElementById("timeLogsContainer");
 const searchInput         = document.getElementById("searchInput");
 const clearSearchButton   = document.getElementById("clearSearchButton");
-const travelOnBtn         = document.getElementById("travelOnBtn");
-const travelOffBtn        = document.getElementById("travelOffBtn");
+const travelToggleBtn     = document.getElementById("travelToggleBtn");
+const travelToggleText    = document.getElementById("travelToggleText");
+const travelStatus        = document.getElementById("travelStatus");
 const takePhotoBtn        = document.getElementById("takePhotoBtn");
 const photoGrid           = document.getElementById("photoGrid");
 const sendPhotosEmailBtn  = document.getElementById("sendPhotosEmailBtn");
@@ -66,13 +60,11 @@ const sendPhotosEmailBtn  = document.getElementById("sendPhotosEmailBtn");
 // === STATE ===
 let currentJob        = null;
 let currentUser       = null;
-let activeSession     = null;
+let activeWorkSession = null;   // active work log (clocked in, is_travel=false)
+let activeTravelLog   = null;   // active travel log (is_travel=true, clocked_out_at=null)
+let capturedPhotos    = [];
 let currentSearchTerm = "";
 let groupCollapsedState = { active: false, upcoming: false, completed: false };
-let travelActive      = false;
-let travelStartTime   = null;
-let capturedPhotos    = [];  // stores base64 strings
-
 let newJobStock = [];
 let editJobStock = [];
 let detailStockArray = [];
@@ -96,34 +88,29 @@ function getCachedAllJobs() {
 }
 
 // === STOCK HELPERS ===
-function parseStockArray(stockStr) {
-    if (!stockStr) return [];
-    return stockStr.split(',').map(s => s.trim()).filter(s => s.length);
+function parseStockArray(str) {
+    if (!str) return [];
+    return str.split(',').map(s => s.trim()).filter(Boolean);
 }
 function escapeHtml(text) {
     if (!text) return "";
-    return text.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
+    return text.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m] || m));
 }
-function renderStockChips(containerId, stockArray, onRemoveCallback) {
+function renderStockChips(containerId, arr, removeFn) {
     const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
-    stockArray.forEach((item, idx) => {
+    arr.forEach((item, idx) => {
         const chip = document.createElement('span');
         chip.className = 'stockChip';
         chip.innerHTML = `${escapeHtml(item)} <span class="removeChip" data-index="${idx}"><i class="fa-solid fa-xmark"></i></span>`;
         container.appendChild(chip);
     });
-    if (onRemoveCallback) {
+    if (removeFn) {
         container.querySelectorAll('.removeChip').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const idx = parseInt(e.currentTarget.getAttribute('data-index'));
-                onRemoveCallback(idx);
+                removeFn(idx);
             });
         });
     }
@@ -147,7 +134,7 @@ function showApp(user) {
     welcomeSub.textContent = displayName;
     loadJobs();
 }
-loginButton.addEventListener("click", async () => {
+loginButton.onclick = async () => {
     const email = loginEmail.value.trim();
     const password = loginPassword.value.trim();
     if (!email || !password) { loginError.textContent = "Enter email and password"; return; }
@@ -157,35 +144,35 @@ loginButton.addEventListener("click", async () => {
     loginButton.disabled = false;
     loginButton.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In';
     if (error) loginError.textContent = "Incorrect email or password.";
-});
-loginPassword.addEventListener("keydown", (e) => { if (e.key === "Enter") loginButton.click(); });
-logoutButton.addEventListener("click", async () => { await db.auth.signOut(); closeNav(); });
+};
+loginPassword.addEventListener("keydown", e => { if (e.key === "Enter") loginButton.click(); });
+logoutButton.onclick = async () => { await db.auth.signOut(); closeNav(); };
 
 // === NAV ===
 function closeNav() { navBar.classList.remove("open"); navOverlay.classList.remove("active"); }
-openCloseNav.addEventListener("click", () => { navBar.classList.toggle("open"); navOverlay.classList.toggle("active"); });
-navOverlay.addEventListener("click", closeNav);
-jobsSection.addEventListener("click", () => { closeNav(); closeJobDetail(); });
-createJobSection.addEventListener("click", () => { closeNav(); openForm(); });
+openCloseNav.onclick = () => { navBar.classList.toggle("open"); navOverlay.classList.toggle("active"); };
+navOverlay.onclick = closeNav;
+jobsSection.onclick = () => { closeNav(); closeJobDetail(); };
+createJobSection.onclick = () => { closeNav(); openForm(); };
 
 // === CREATE JOB FORM ===
 function openForm() {
     newJobForm.classList.add("active");
     newJobStock = [];
-    renderStockChips('stockChipsCreate', newJobStock, (i) => newJobStock.splice(i,1) && renderStockChips('stockChipsCreate', newJobStock, (i)=>newJobStock.splice(i,1)));
+    renderStockChips('stockChipsCreate', newJobStock, i => newJobStock.splice(i,1) && renderStockChips('stockChipsCreate', newJobStock, () => {}));
     document.getElementById('inputStockItem').value = '';
 }
 function closeForm() { newJobForm.classList.remove("active"); }
-addJob.addEventListener("click", openForm);
-formClose.addEventListener("click", closeForm);
-newJobForm.addEventListener("click", (e) => { if (e.target === newJobForm) closeForm(); });
-document.getElementById('addStockItemBtn').addEventListener('click', () => {
-    const input = document.getElementById('inputStockItem');
-    const item = input.value.trim();
-    if (item) { newJobStock.push(item); input.value = ''; renderStockChips('stockChipsCreate', newJobStock, (i)=>newJobStock.splice(i,1) && renderStockChips('stockChipsCreate', newJobStock, (i)=>newJobStock.splice(i,1))); }
-});
-document.getElementById('inputStockItem').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addStockItemBtn').click(); } });
-newJobButton.addEventListener("click", async () => {
+addJob.onclick = openForm;
+formClose.onclick = closeForm;
+newJobForm.onclick = e => { if (e.target === newJobForm) closeForm(); };
+document.getElementById('addStockItemBtn').onclick = () => {
+    const inp = document.getElementById('inputStockItem');
+    const item = inp.value.trim();
+    if (item) { newJobStock.push(item); inp.value = ''; renderStockChips('stockChipsCreate', newJobStock, i => newJobStock.splice(i,1)); }
+};
+document.getElementById('inputStockItem').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addStockItemBtn').click(); } });
+newJobButton.onclick = async () => {
     const jobName = document.getElementById("inputJobName").value.trim();
     if (!jobName) { alert("Please enter a job name."); return; }
     newJobButton.disabled = true;
@@ -203,10 +190,10 @@ newJobButton.addEventListener("click", async () => {
     newJobButton.disabled = false;
     newJobButton.innerHTML = '<i class="fa-solid fa-check"></i> Create Job';
     if (error) { alert("Failed to save job."); return; }
-    const currentJobs = getCachedAllJobs();
-    currentJobs.unshift(data);
-    cacheAllJobs(currentJobs);
-    renderJobList(currentJobs);
+    const jobs = getCachedAllJobs();
+    jobs.unshift(data);
+    cacheAllJobs(jobs);
+    renderJobList(jobs);
     document.getElementById("inputJobName").value = "";
     document.getElementById("inputAddress").value = "";
     document.getElementById("inputClientName").value = "";
@@ -216,24 +203,24 @@ newJobButton.addEventListener("click", async () => {
     newJobStock = [];
     renderStockChips('stockChipsCreate', [], null);
     closeForm();
-});
+};
 
-// === JOB LIST & SEARCH ===
-searchInput.addEventListener("input", (e) => {
+// === JOB LIST ===
+searchInput.oninput = (e) => {
     currentSearchTerm = e.target.value.trim().toLowerCase();
     clearSearchButton.style.display = currentSearchTerm ? "flex" : "none";
     const jobs = getCachedAllJobs();
     if (jobs.length) renderJobList(jobs);
     else loadJobs();
-});
-clearSearchButton.addEventListener("click", () => {
+};
+clearSearchButton.onclick = () => {
     searchInput.value = "";
     currentSearchTerm = "";
     clearSearchButton.style.display = "none";
     const jobs = getCachedAllJobs();
     if (jobs.length) renderJobList(jobs);
     searchInput.focus();
-});
+};
 function getJobStatus(job) {
     if (job.status === "completed") return "completed";
     if (job.start_date && new Date(job.start_date) > new Date()) return "upcoming";
@@ -241,15 +228,15 @@ function getJobStatus(job) {
 }
 async function loadJobs() {
     jobCardsContainer.innerHTML = '<div class="skeleton"></div>'.repeat(3);
-    const { data: jobs, error } = await db.from("Jobs").select("*").order("created_at", { ascending: false });
-    if (error || !jobs) {
+    const { data, error } = await db.from("Jobs").select("*").order("created_at", { ascending: false });
+    if (error || !data) {
         const cached = getCachedAllJobs();
         if (cached.length) renderJobList(cached);
         else jobCardsContainer.innerHTML = `<p class="emptyState">Failed to load jobs.</p>`;
         return;
     }
-    cacheAllJobs(jobs);
-    renderJobList(jobs);
+    cacheAllJobs(data);
+    renderJobList(data);
 }
 function renderJobList(jobs) {
     const filtered = jobs.filter(j => !currentSearchTerm || (j.job_name||"").toLowerCase().includes(currentSearchTerm) || (j.client_name||"").toLowerCase().includes(currentSearchTerm));
@@ -288,78 +275,103 @@ function buildJobCard(job) {
     const status = getJobStatus(job);
     const { bg, color } = status === 'active' ? { bg: "#fef3c7", color: "#d97706" } : status === 'upcoming' ? { bg: "#dbeafe", color: "#2563eb" } : { bg: "#dcfce7", color: "#16a34a" };
     card.innerHTML = `<div class="jobCardHeader"><p class="jobName">${escapeHtml(job.job_name)}</p><span class="statusBadge" style="background:${bg};color:${color}">${status}</span></div><p class="jobSub">${escapeHtml(job.client_name||'No client')} · ${job.start_date||'No date'}</p>`;
-    card.addEventListener("click", () => openJobDetail(job.id));
+    card.onclick = () => openJobDetail(job.id);
     return card;
 }
 
-// === TRAVEL & CLOCK LOGIC ===
-async function checkActiveSession(jobId) {
-    const { data } = await db.from("time_logs").select("*").eq("job_id", jobId).eq("user_id", currentUser.id).is("clocked_out_at", null).order("clocked_in_at", { ascending: false }).limit(1).maybeSingle();
+// === TRAVEL & CLOCK LOGIC (with persistence) ===
+async function fetchActiveTravelLog(jobId) {
+    const { data } = await db.from("time_logs")
+        .select("*")
+        .eq("job_id", jobId)
+        .eq("user_id", currentUser.id)
+        .eq("is_travel", true)
+        .is("clocked_out_at", null)
+        .maybeSingle();
     return data;
 }
-function updateTravelUI() {
-    if (travelActive) {
-        travelOnBtn.classList.add("activeTravel");
-        travelOffBtn.classList.remove("activeTravel");
-        if (!activeSession) clockStatus.textContent = "🚗 Travel mode ON (not clocked in)";
+async function fetchActiveWorkSession(jobId) {
+    const { data } = await db.from("time_logs")
+        .select("*")
+        .eq("job_id", jobId)
+        .eq("user_id", currentUser.id)
+        .eq("is_travel", false)
+        .is("clocked_out_at", null)
+        .maybeSingle();
+    return data;
+}
+
+async function updateTravelUI() {
+    const isTravelActive = !!activeTravelLog;
+    if (isTravelActive) {
+        travelToggleBtn.classList.add("activeTravel");
+        travelToggleText.textContent = "Stop Travel";
+        travelStatus.textContent = `Travel started at ${new Date(activeTravelLog.clocked_in_at).toLocaleTimeString()}`;
     } else {
-        travelOnBtn.classList.remove("activeTravel");
-        travelOffBtn.classList.add("activeTravel");
-        if (!activeSession) clockStatus.textContent = "Travel mode OFF";
+        travelToggleBtn.classList.remove("activeTravel");
+        travelToggleText.textContent = "Start Travel";
+        travelStatus.textContent = "";
     }
 }
-travelOnBtn.addEventListener("click", async () => {
+
+travelToggleBtn.addEventListener("click", async () => {
     if (!currentJob) return;
-    if (activeSession) { alert("Please clock out before starting travel."); return; }
-    travelActive = true;
-    travelStartTime = new Date();
-    updateTravelUI();
-});
-travelOffBtn.addEventListener("click", async () => {
-    if (!currentJob) return;
-    if (activeSession) { alert("Cannot turn off travel while clocked in. Clock out first."); return; }
-    if (travelActive && travelStartTime) {
-        const travelDuration = Math.floor((new Date() - travelStartTime) / 1000);
-        if (travelDuration > 0) {
+    travelToggleBtn.disabled = true;
+    try {
+        if (activeTravelLog) {
+            // Stop travel
+            const now = new Date();
+            const duration = Math.floor((now - new Date(activeTravelLog.clocked_in_at)) / 1000);
+            await db.from("time_logs").update({
+                clocked_out_at: now.toISOString(),
+                duration_seconds: duration
+            }).eq("id", activeTravelLog.id);
+            activeTravelLog = null;
+            await loadTimeLogs(currentJob.id);
+            await updateTravelUI();
+        } else {
+            // Start travel – ensure no active work session
+            if (activeWorkSession) {
+                alert("Please clock out before starting travel.");
+                return;
+            }
+            const now = new Date().toISOString();
             const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "User";
-            await db.from("time_logs").insert([{
+            const { data, error } = await db.from("time_logs").insert([{
                 job_id: currentJob.id,
                 user_id: currentUser.id,
                 user_name: displayName,
-                clocked_in_at: travelStartTime.toISOString(),
-                clocked_out_at: new Date().toISOString(),
-                duration_seconds: travelDuration,
+                clocked_in_at: now,
+                clocked_out_at: null,
+                duration_seconds: 0,
                 is_travel: true
-            }]);
-            loadTimeLogs(currentJob.id);
+            }]).select().single();
+            if (error) throw error;
+            activeTravelLog = data;
+            await updateTravelUI();
         }
+    } catch (err) {
+        console.error("Travel toggle error:", err);
+        alert("Action failed: " + err.message);
+    } finally {
+        travelToggleBtn.disabled = false;
     }
-    travelActive = false;
-    travelStartTime = null;
-    updateTravelUI();
 });
+
 async function handleClockIn() {
-    if (travelActive) {
-        // Auto travel off before clock in
-        if (travelStartTime) {
-            const travelDuration = Math.floor((new Date() - travelStartTime) / 1000);
-            if (travelDuration > 0) {
-                const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "User";
-                await db.from("time_logs").insert([{
-                    job_id: currentJob.id,
-                    user_id: currentUser.id,
-                    user_name: displayName,
-                    clocked_in_at: travelStartTime.toISOString(),
-                    clocked_out_at: new Date().toISOString(),
-                    duration_seconds: travelDuration,
-                    is_travel: true
-                }]);
-            }
-        }
-        travelActive = false;
-        travelStartTime = null;
-        updateTravelUI();
+    // If travel is active, stop it first (auto travel off)
+    if (activeTravelLog) {
+        const now = new Date();
+        const duration = Math.floor((now - new Date(activeTravelLog.clocked_in_at)) / 1000);
+        await db.from("time_logs").update({
+            clocked_out_at: now.toISOString(),
+            duration_seconds: duration
+        }).eq("id", activeTravelLog.id);
+        activeTravelLog = null;
+        await updateTravelUI();
+        await loadTimeLogs(currentJob.id);
     }
+
     const now = new Date().toISOString();
     const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "User";
     const { data, error } = await db.from("time_logs").insert([{
@@ -371,42 +383,50 @@ async function handleClockIn() {
         duration_seconds: 0,
         is_travel: false
     }]).select().single();
-    if (error) { alert("Clock in failed"); return; }
-    activeSession = data;
-    updateClockUI(activeSession);
+    if (error) { alert("Clock in failed: " + error.message); return; }
+    activeWorkSession = data;
+    updateClockUI();
     loadTimeLogs(currentJob.id);
 }
+
 async function handleClockOut() {
-    if (!activeSession) return;
-    const now = new Date().toISOString();
-    const sessionSeconds = Math.floor((new Date(now) - new Date(activeSession.clocked_in_at)) / 1000);
-    const newTotal = (currentJob.total_time_seconds || 0) + sessionSeconds;
-    await db.from("time_logs").update({ clocked_out_at: now, duration_seconds: sessionSeconds }).eq("id", activeSession.id);
+    if (!activeWorkSession) return;
+    const now = new Date();
+    const duration = Math.floor((now - new Date(activeWorkSession.clocked_in_at)) / 1000);
+    const newTotal = (currentJob.total_time_seconds || 0) + duration;
+    await db.from("time_logs").update({
+        clocked_out_at: now.toISOString(),
+        duration_seconds: duration
+    }).eq("id", activeWorkSession.id);
     await db.from("Jobs").update({ total_time_seconds: newTotal }).eq("id", currentJob.id);
     const { data: updated } = await db.from("Jobs").select("*").eq("id", currentJob.id).single();
     if (updated) { currentJob = updated; cacheJob(updated); populateDetailView(updated); }
-    activeSession = null;
-    updateClockUI(null);
+    activeWorkSession = null;
+    updateClockUI();
     loadTimeLogs(currentJob.id);
 }
-function updateClockUI(session) {
-    if (session) {
+
+function updateClockUI() {
+    if (activeWorkSession) {
         clockButton.classList.add("clockedIn");
         clockButtonText.textContent = "Clock Out";
-        clockStatus.textContent = `Clocked in at ${new Date(session.clocked_in_at).toLocaleTimeString()}`;
+        clockStatus.textContent = `Clocked in at ${new Date(activeWorkSession.clocked_in_at).toLocaleTimeString()}`;
     } else {
         clockButton.classList.remove("clockedIn");
         clockButtonText.textContent = "Clock In";
-        clockStatus.textContent = travelActive ? "🚗 Travel mode ON" : "Not clocked in";
+        clockStatus.textContent = "Not clocked in";
     }
-    totalTimeDisplay.textContent = (currentJob?.total_time_seconds || 0) > 0 ? `Total time: ${formatDuration(currentJob.total_time_seconds)}` : "";
+    totalTimeDisplay.textContent = (currentJob?.total_time_seconds || 0) > 0 ? `Total work time: ${formatDuration(currentJob.total_time_seconds)}` : "";
 }
+
 clockButton.addEventListener("click", async () => {
     if (!currentJob) return;
     clockButton.disabled = true;
-    if (activeSession) await handleClockOut();
-    else await handleClockIn();
-    clockButton.disabled = false;
+    try {
+        if (activeWorkSession) await handleClockOut();
+        else await handleClockIn();
+    } catch (err) { console.error(err); alert("Action failed."); }
+    finally { clockButton.disabled = false; }
 });
 
 // === JOB DETAIL ===
@@ -416,27 +436,32 @@ async function openJobDetail(jobId) {
     jobDetailEdit.style.display = "none";
     document.getElementById('addStockInlineForm').style.display = 'none';
     document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
-    const { data: freshJob } = await db.from("Jobs").select("*").eq("id", jobId).single();
-    if (freshJob) {
-        currentJob = freshJob;
-        cacheJob(freshJob);
-        populateDetailView(freshJob);
-    }
-    travelActive = false;
-    travelStartTime = null;
+
+    const { data, error } = await db.from("Jobs").select("*").eq("id", jobId).single();
+    if (error) { alert("Failed to load job details."); closeJobDetail(); return; }
+    currentJob = data;
+    cacheJob(data);
+    populateDetailView(data);
+
+    // Load active sessions from DB
+    activeTravelLog = await fetchActiveTravelLog(jobId);
+    activeWorkSession = await fetchActiveWorkSession(jobId);
+    await updateTravelUI();
+    updateClockUI();
+    loadTimeLogs(jobId);
+
+    // Reset photos
     capturedPhotos = [];
     renderPhotoGrid();
-    updateTravelUI();
-    activeSession = await checkActiveSession(jobId);
-    updateClockUI(activeSession);
-    loadTimeLogs(jobId);
 }
 function closeJobDetail() {
     jobDetail.classList.remove("active");
     currentJob = null;
-    activeSession = null;
+    activeWorkSession = null;
+    activeTravelLog = null;
 }
-jobDetailBack.addEventListener("click", closeJobDetail);
+jobDetailBack.onclick = closeJobDetail;
+
 function populateDetailView(job) {
     const status = getJobStatus(job);
     const { bg, color } = status === 'active' ? { bg: "#fef3c7", color: "#d97706" } : status === 'upcoming' ? { bg: "#dbeafe", color: "#2563eb" } : { bg: "#dcfce7", color: "#16a34a" };
@@ -448,11 +473,13 @@ function populateDetailView(job) {
     document.getElementById("detailStartDate").textContent = job.start_date || "—";
     document.getElementById("detailFault").textContent = job.fault_desc || "—";
     document.getElementById("detailStatus").innerHTML = `<span class="statusBadge" style="background:${bg};color:${color}">${status}</span>`;
-    const stockArray = parseStockArray(job.stock || '');
-    detailStockArray = [...stockArray];
+
+    const stockArr = parseStockArray(job.stock || '');
+    detailStockArray = [...stockArr];
     const container = document.getElementById('stockChipsView');
     container.innerHTML = '';
-    stockArray.forEach(s => { const chip = document.createElement('span'); chip.className='stockChip'; chip.textContent=s; container.appendChild(chip); });
+    stockArr.forEach(s => { const chip = document.createElement('span'); chip.className='stockChip'; chip.textContent=s; container.appendChild(chip); });
+
     const isCompleted = job.status === "completed";
     document.getElementById('addStockInlineBtn').style.display = isCompleted ? 'none' : 'inline-flex';
     document.getElementById("clockSection").style.display = isCompleted ? "none" : "block";
@@ -460,56 +487,64 @@ function populateDetailView(job) {
     completeJobButton.style.display = isCompleted ? "none" : "flex";
     uncompleteJobButton.style.display = isCompleted ? "flex" : "none";
 }
+
 async function loadTimeLogs(jobId) {
     timeLogsContainer.innerHTML = '<p class="emptyState">Loading...</p>';
-    const { data: logs } = await db.from("time_logs").select("*").eq("job_id", jobId).order("clocked_in_at", { ascending: false });
-    if (!logs || !logs.length) { timeLogsContainer.innerHTML = '<p class="emptyState">No sessions yet.</p>'; return; }
-    timeLogsContainer.innerHTML = logs.map(log => {
+    const { data, error } = await db.from("time_logs")
+        .select("*")
+        .eq("job_id", jobId)
+        .order("clocked_in_at", { ascending: false });
+    if (error || !data || !data.length) {
+        timeLogsContainer.innerHTML = '<p class="emptyState">No time records yet.</p>';
+        return;
+    }
+    timeLogsContainer.innerHTML = data.map(log => {
         const inTime = new Date(log.clocked_in_at);
         const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
-        const travelIcon = log.is_travel ? "🚗 " : "";
-        return `<div class="timeLogRow"><div><b>${travelIcon}${escapeHtml(log.user_name)}</b><br><small>${inTime.toLocaleDateString()}</small></div><div>${inTime.toLocaleTimeString()} → ${outTime ? outTime.toLocaleTimeString() : "—"}</div><div>${formatDuration(log.duration_seconds||0)}</div></div>`;
+        const prefix = log.is_travel ? "🚗 Travel - " : "";
+        let duration = log.duration_seconds;
+        if (!outTime && !log.clocked_out_at && log.is_travel && activeTravelLog && activeTravelLog.id === log.id) {
+            // currently active travel – compute live duration
+            duration = Math.floor((new Date() - inTime) / 1000);
+        }
+        return `<div class="timeLogRow">
+            <div><b>${prefix}${escapeHtml(log.user_name)}</b><br><small>${inTime.toLocaleDateString()}</small></div>
+            <div>${inTime.toLocaleTimeString()} → ${outTime ? outTime.toLocaleTimeString() : "—"}</div>
+            <div>${formatDuration(duration)}</div>
+        </div>`;
     }).join('');
-}
-function formatDuration(sec) {
-    const h = Math.floor(sec/3600);
-    const m = Math.floor((sec%3600)/60);
-    const s = sec%60;
-    if (h) return `${h}h ${m}m`;
-    if (m) return `${m}m ${s}s`;
-    return `${s}s`;
 }
 
 // === STOCK INLINE ADD ===
-document.getElementById('addStockInlineBtn').addEventListener('click', () => {
+document.getElementById('addStockInlineBtn').onclick = () => {
     document.getElementById('addStockInlineForm').style.display = 'flex';
     document.getElementById('addStockInlineBtn').style.display = 'none';
-});
-document.getElementById('cancelAddStockBtn').addEventListener('click', () => {
+};
+document.getElementById('cancelAddStockBtn').onclick = () => {
     document.getElementById('addStockInlineForm').style.display = 'none';
     document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
-});
-document.getElementById('addStockInlineConfirmBtn').addEventListener('click', async () => {
+};
+document.getElementById('addStockInlineConfirmBtn').onclick = async () => {
     const item = document.getElementById('newStockItemInput').value.trim();
     if (!item || !currentJob) return;
     detailStockArray.push(item);
-    const newStockStr = detailStockArray.join(', ');
-    await db.from("Jobs").update({ stock: newStockStr }).eq("id", currentJob.id);
-    currentJob.stock = newStockStr;
+    const newStock = detailStockArray.join(', ');
+    await db.from("Jobs").update({ stock: newStock }).eq("id", currentJob.id);
+    currentJob.stock = newStock;
     cacheJob(currentJob);
     populateDetailView(currentJob);
     document.getElementById('newStockItemInput').value = '';
     document.getElementById('addStockInlineForm').style.display = 'none';
     document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
-});
+};
 
 // === EDIT JOB ===
-jobDetailEditToggle.addEventListener("click", () => {
-    const isEditing = jobDetailEdit.style.display === "block";
-    jobDetailView.style.display = isEditing ? "block" : "none";
-    jobDetailEdit.style.display = isEditing ? "none" : "block";
-    jobDetailEditToggle.innerHTML = isEditing ? '<i class="fa-solid fa-pen"></i>' : '<i class="fa-solid fa-xmark"></i>';
-    if (!isEditing) {
+jobDetailEditToggle.onclick = () => {
+    const editing = jobDetailEdit.style.display === "block";
+    jobDetailView.style.display = editing ? "block" : "none";
+    jobDetailEdit.style.display = editing ? "none" : "block";
+    jobDetailEditToggle.innerHTML = editing ? '<i class="fa-solid fa-pen"></i>' : '<i class="fa-solid fa-xmark"></i>';
+    if (!editing) {
         document.getElementById("editJobName").value = currentJob.job_name || "";
         document.getElementById("editAddress").value = currentJob.address || "";
         document.getElementById("editClientName").value = currentJob.client_name || "";
@@ -517,14 +552,14 @@ jobDetailEditToggle.addEventListener("click", () => {
         document.getElementById("editFault").value = currentJob.fault_desc || "";
         document.getElementById("editPhone").value = currentJob.phone || "";
         editJobStock = parseStockArray(currentJob.stock || '');
-        renderStockChips('stockChipsEdit', editJobStock, (i) => editJobStock.splice(i,1) && renderStockChips('stockChipsEdit', editJobStock, (i)=>editJobStock.splice(i,1)));
+        renderStockChips('stockChipsEdit', editJobStock, i => editJobStock.splice(i,1));
     }
-});
-document.getElementById('editAddStockItemBtn').addEventListener('click', () => {
+};
+document.getElementById('editAddStockItemBtn').onclick = () => {
     const inp = document.getElementById('editStockItemInput');
-    if (inp.value.trim()) { editJobStock.push(inp.value.trim()); inp.value = ''; renderStockChips('stockChipsEdit', editJobStock, (i)=>editJobStock.splice(i,1)); }
-});
-saveEditButton.addEventListener("click", async () => {
+    if (inp.value.trim()) { editJobStock.push(inp.value.trim()); inp.value = ''; renderStockChips('stockChipsEdit', editJobStock, i => editJobStock.splice(i,1)); }
+};
+saveEditButton.onclick = async () => {
     const updates = {
         job_name: document.getElementById("editJobName").value.trim(),
         address: document.getElementById("editAddress").value.trim(),
@@ -547,24 +582,107 @@ saveEditButton.addEventListener("click", async () => {
     jobDetailView.style.display = "block";
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
+};
+
+// === COMPLETE JOB (EMAIL FIRST, THEN COMPLETE) ===
+completeJobButton.addEventListener("click", async () => {
+    if (!confirm("Mark this job as complete? A summary email will be sent first.")) return;
+
+    // Clock out if work session active
+    if (activeWorkSession) {
+        await handleClockOut();
+    }
+    // Stop travel if active
+    if (activeTravelLog) {
+        const now = new Date();
+        const duration = Math.floor((now - new Date(activeTravelLog.clocked_in_at)) / 1000);
+        await db.from("time_logs").update({
+            clocked_out_at: now.toISOString(),
+            duration_seconds: duration
+        }).eq("id", activeTravelLog.id);
+        activeTravelLog = null;
+        await updateTravelUI();
+        await loadTimeLogs(currentJob.id);
+    }
+
+    // Fetch latest time logs for email
+    const { data: logs } = await db.from("time_logs")
+        .select("*")
+        .eq("job_id", currentJob.id)
+        .order("clocked_in_at", { ascending: true });
+    const totalSeconds = logs?.reduce((sum, log) => sum + (log.duration_seconds || 0), 0) || 0;
+    const totalHours = (totalSeconds / 3600).toFixed(2);
+
+    // Build email HTML table
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-NZ", { day:"numeric", month:"short" }) : "—";
+    const fmtTime = (d) => new Date(d).toLocaleTimeString("en-NZ", { hour:"2-digit", minute:"2-digit" });
+    const fmtDur = (s) => formatDuration(s);
+    const tableHtml = logs && logs.length > 0
+        ? `<table border="0" cellpadding="8" style="border-collapse:collapse; width:100%;">
+            <thead><tr style="background:#f0f0f0;"><th>Type</th><th>User</th><th>Date</th><th>In</th><th>Out</th><th>Duration</th></tr></thead>
+            <tbody>
+                ${logs.map(log => `<tr>
+                    <td>${log.is_travel ? "🚗 Travel" : "Work"}</td>
+                    <td>${escapeHtml(log.user_name)}</td>
+                    <td>${fmtDate(log.clocked_in_at)}</td>
+                    <td>${fmtTime(log.clocked_in_at)}</td>
+                    <td>${log.clocked_out_at ? fmtTime(log.clocked_out_at) : "—"}</td>
+                    <td>${fmtDur(log.duration_seconds || 0)}</td>
+                </tr>`).join("")}
+            </tbody>
+        </table>`
+        : "No time sessions recorded.";
+
+    const templateParams = {
+        to_email: "ashleywork02@gmail.com",
+        job_name: currentJob.job_name || "—",
+        client_name: currentJob.client_name || "—",
+        address: currentJob.address || "—",
+        phone: currentJob.phone || "—",
+        start_date: currentJob.start_date || "—",
+        stock: currentJob.stock || "—",
+        fault_desc: currentJob.fault_desc || "—",
+        total_time: `${totalHours} hours (${totalSeconds} sec)`,
+        time_sessions_table: tableHtml
+    };
+
+    completeJobButton.disabled = true;
+    completeJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Sending email...';
+
+    try {
+        // *** REPLACE WITH YOUR EMAILJS SERVICE & TEMPLATE IDs ***
+        const response = await emailjs.send(
+            "service_nlma6da",      // your service ID
+            "template_y2ineka",     // your template ID
+            templateParams
+        );
+        if (response.status === 200) {
+            // Email sent – now mark job as completed
+            await db.from("Jobs").update({ status: "completed" }).eq("id", currentJob.id);
+            alert('✅ Job completed and summary email sent.');
+            loadJobs();
+            closeJobDetail();
+        } else {
+            throw new Error('EmailJS returned unexpected status');
+        }
+    } catch (err) {
+        console.error("Email error:", err);
+        alert(`❌ Job NOT completed. Email failed: ${err.message || "Unknown error"}`);
+    } finally {
+        completeJobButton.disabled = false;
+        completeJobButton.innerHTML = '<i class="fa-solid fa-flag-checkered"></i> Complete Job';
+    }
 });
 
-// === COMPLETE / UNCOMPLETE ===
-completeJobButton.addEventListener("click", async () => {
-    if (!confirm("Mark as complete?")) return;
-    if (activeSession) await handleClockOut();
-    await db.from("Jobs").update({ status: "completed" }).eq("id", currentJob.id);
-    loadJobs();
-    closeJobDetail();
-});
+// === UNCOMPLETE JOB ===
 uncompleteJobButton.addEventListener("click", async () => {
-    if (!confirm("Mark as active?")) return;
+    if (!confirm("Mark this job as active again?")) return;
     await db.from("Jobs").update({ status: "active" }).eq("id", currentJob.id);
     loadJobs();
     closeJobDetail();
 });
 
-// === PHOTOS (send via email client - works for small images) ===
+// === PHOTOS (send via email client) ===
 function renderPhotoGrid() {
     photoGrid.innerHTML = '';
     capturedPhotos.forEach((src, idx) => {
@@ -592,8 +710,7 @@ takePhotoBtn.addEventListener("click", () => {
 sendPhotosEmailBtn.addEventListener("click", () => {
     if (!capturedPhotos.length) return;
     const subject = `${currentJob.client_name || 'Job'} - ${currentJob.address || 'No address'}`;
-    const body = `Job: ${currentJob.job_name}\nClient: ${currentJob.client_name}\nAddress: ${currentJob.address}\n\nPhotos attached as data URLs (copy them to view).\n\n${capturedPhotos.join('\n\n')}`;
-    const mailto = `mailto:ashleywork02@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
-    alert("Your email client will open. Please send the email manually.\nFor better attachment support, use a cloud upload service (see comments in code).");
+    const body = `Job: ${currentJob.job_name}\nClient: ${currentJob.client_name}\nAddress: ${currentJob.address}\n\nPhotos attached as data URLs (copy to view):\n${capturedPhotos.join('\n\n')}`;
+    window.location.href = `mailto:ashleywork02@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    alert("Your email client will open. Please send the email manually.");
 });

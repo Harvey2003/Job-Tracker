@@ -162,18 +162,22 @@
                 </div>
             </div>
 
-            <!-- Travel + Clock Section -->
+            <!-- Travel & Clock Section (combined card) -->
             <div id="clockSection">
-                <div class="travelButtonRow">
-                    <button id="travelOnBtn" class="travelBtn"><i class="fa-solid fa-car"></i> Travel On</button>
-                    <button id="travelOffBtn" class="travelBtn"><i class="fa-solid fa-flag-checkered"></i> Travel Off</button>
-                </div>
-                <button id="clockButton" class="clockButton">
-                    <i class="fa-solid fa-clock"></i>
-                    <span id="clockButtonText">Clock In</span>
+                <!-- Travel button (single toggle) -->
+                <button id="travelToggleBtn" class="actionBtn travelBtn">
+                    <i class="fa-solid fa-car"></i> <span id="travelToggleText">Start Travel</span>
                 </button>
-                <p id="clockStatus"></p>
-                <p id="totalTimeDisplay"></p>
+                <div id="travelStatus" class="actionStatus"></div>
+
+                <div class="divider"></div>
+
+                <!-- Clock button -->
+                <button id="clockButton" class="actionBtn clockBtn">
+                    <i class="fa-solid fa-clock"></i> <span id="clockButtonText">Clock In</span>
+                </button>
+                <p id="clockStatus" class="actionStatus"></p>
+                <p id="totalTimeDisplay" class="totalTime"></p>
             </div>
 
             <!-- Photos Section -->
@@ -283,7 +287,7 @@
 
             <!-- Time Logs -->
             <div id="timeLogsSection" class="detailCard">
-                <p class="sectionSubTitle">Time Sessions</p>
+                <p class="sectionSubTitle">Time & Travel Logs</p>
                 <div id="timeLogsContainer"></div>
             </div>
 
