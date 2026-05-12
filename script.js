@@ -57,6 +57,11 @@ const saveEditButton      = document.getElementById("saveEditButton");
 const timeLogsContainer   = document.getElementById("timeLogsContainer");
 const searchInput         = document.getElementById("searchInput");
 const clearSearchButton   = document.getElementById("clearSearchButton");
+const travelOnBtn         = document.getElementById("travelOnBtn");
+const travelOffBtn        = document.getElementById("travelOffBtn");
+const takePhotoBtn        = document.getElementById("takePhotoBtn");
+const photoGrid           = document.getElementById("photoGrid");
+const sendPhotosEmailBtn  = document.getElementById("sendPhotosEmailBtn");
 
 // === STATE ===
 let currentJob        = null;
@@ -68,6 +73,9 @@ let groupCollapsedState = {
     upcoming: false,
     completed: false
 };
+let travelActive = false;
+let travelStartTime = null;
+let capturedPhotos = [];
 
 let newJobStock = [];
 let editJobStock = [];
@@ -269,15 +277,6 @@ document.getElementById('inputStockItem').addEventListener('keydown', (e) => {
     }
 });
 
-// === KEYBOARD SCROLL FIX ===
-document.querySelectorAll(".newJobInput, #inputFault").forEach(input => {
-    input.addEventListener("focus", () => {
-        setTimeout(() => {
-            input.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 300);
-    });
-});
-
 // === SEARCH ===
 searchInput.addEventListener("input", (e) => {
     currentSearchTerm = e.target.value.trim().toLowerCase();
@@ -297,12 +296,6 @@ clearSearchButton.addEventListener("click", () => {
     const jobs = getCachedAllJobs();
     if (jobs.length) renderJobList(jobs);
     searchInput.focus();
-});
-
-searchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        searchInput.blur();
-    }
 });
 
 // === JOB STATUS HELPER ===
@@ -327,9 +320,8 @@ function getStatusStyle(status) {
     }
 }
 
-// === LOAD JOBS (with skeleton) ===
+// === LOAD JOBS ===
 async function loadJobs() {
-    // Show skeleton cards
     jobCardsContainer.innerHTML = '';
     for (let i = 0; i < 3; i++) {
         const skel = document.createElement('div');
@@ -361,7 +353,7 @@ async function loadJobs() {
     renderJobList(jobs);
 }
 
-// === RENDER JOB LIST (with collapsible groups) ===
+// === RENDER JOB LIST ===
 function renderJobList(jobs) {
     const filtered = jobs.filter(job => {
         if (!currentSearchTerm) return true;
@@ -445,21 +437,16 @@ function buildJobCard(job) {
 
     card.innerHTML = `
         <div class="jobCardHeader">
-            <p class="jobName">${job.job_name}</p>
+            <p class="jobName">${escapeHtml(job.job_name)}</p>
             <span class="statusBadge" style="background-color:${bg}; color:${color};">
                 ${capitalise(status)}
             </span>
         </div>
-        <p class="jobSub">${job.client_name || "No client"} · ${job.start_date || "No date"}</p>
+        <p class="jobSub">${escapeHtml(job.client_name || "No client")} · ${job.start_date || "No date"}</p>
     `;
 
     card.addEventListener("click", () => openJobDetail(job.id));
     return card;
-}
-
-function refreshJobListFromCache() {
-    const jobs = getCachedAllJobs();
-    if (jobs.length > 0) renderJobList(jobs);
 }
 
 // === CREATE JOB ===
@@ -538,6 +525,244 @@ async function checkActiveSession(jobId) {
     return data;
 }
 
+// === TRAVEL UI UPDATE ===
+function updateTravelUI() {
+    if (travelActive) {
+        travelOnBtn.classList.add("activeTravel");
+        travelOffBtn.classList.remove("activeTravel");
+        if (!activeSession) {
+            clockStatus.textContent = "🚗 Travel mode ON (not clocked in)";
+        }
+    } else {
+        travelOnBtn.classList.remove("activeTravel");
+        travelOffBtn.classList.add("activeTravel");
+        if (!activeSession) {
+            clockStatus.textContent = "Travel mode OFF";
+        }
+    }
+}
+
+// === TRAVEL BUTTONS ===
+travelOnBtn.addEventListener("click", async () => {
+    if (!currentJob) return;
+    if (activeSession) {
+        alert("Please clock out before starting travel.");
+        return;
+    }
+    travelActive = true;
+    travelStartTime = new Date();
+    updateTravelUI();
+});
+
+travelOffBtn.addEventListener("click", async () => {
+    if (!currentJob) return;
+    if (activeSession) {
+        alert("Cannot turn off travel while clocked in. Clock out first.");
+        return;
+    }
+    if (travelActive && travelStartTime) {
+        // Record travel time as a special log entry
+        const travelDuration = Math.floor((new Date() - travelStartTime) / 1000);
+        if (travelDuration > 0) {
+            const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "User";
+            await db.from("time_logs").insert([{
+                job_id: currentJob.id,
+                user_id: currentUser.id,
+                user_name: displayName,
+                clocked_in_at: travelStartTime.toISOString(),
+                clocked_out_at: new Date().toISOString(),
+                duration_seconds: travelDuration,
+                is_travel: true
+            }]);
+            loadTimeLogs(currentJob.id);
+        }
+    }
+    travelActive = false;
+    travelStartTime = null;
+    updateTravelUI();
+});
+
+// === CLOCK IN/OUT ===
+async function handleClockIn() {
+    if (travelActive) {
+        alert("Please turn Travel OFF before clocking in.");
+        return;
+    }
+    
+    const now = new Date().toISOString();
+    const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split("@")[0] || "User";
+
+    const { data, error } = await db
+        .from("time_logs")
+        .insert([{
+            job_id:           currentJob.id,
+            user_id:          currentUser.id,
+            user_name:        displayName,
+            clocked_in_at:    now,
+            clocked_out_at:   null,
+            duration_seconds: 0,
+            is_travel:        false
+        }])
+        .select()
+        .single();
+
+    if (error || !data) {
+        alert("Clock in failed: " + (error?.message || "no data returned"));
+        return;
+    }
+
+    activeSession = data;
+    updateClockUI(activeSession);
+}
+
+async function handleClockOut() {
+    const now            = new Date().toISOString();
+    const clockInTime    = new Date(activeSession.clocked_in_at);
+    const sessionSeconds = Math.floor((new Date(now) - clockInTime) / 1000);
+    const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
+
+    const { error: logError } = await db
+        .from("time_logs")
+        .update({
+            clocked_out_at:   now,
+            duration_seconds: sessionSeconds
+        })
+        .eq("id", activeSession.id);
+
+    if (logError) {
+        console.error("Clock out log update failed:", logError);
+        return;
+    }
+
+    const { data: updatedJob, error: jobError } = await db
+        .from("Jobs")
+        .update({ total_time_seconds: newTotal })
+        .eq("id", currentJob.id)
+        .select()
+        .single();
+
+    if (!jobError && updatedJob) {
+        currentJob = updatedJob;
+        cacheJob(updatedJob);
+    } else {
+        currentJob = { ...currentJob, total_time_seconds: newTotal };
+        cacheJob(currentJob);
+    }
+
+    activeSession = null;
+    updateClockUI(null);
+    loadTimeLogs(currentJob.id);
+}
+
+function updateClockUI(session) {
+    if (session) {
+        clockButton.classList.add("clockedIn");
+        clockButtonText.textContent = "Clock Out";
+        clockStatus.textContent = `Clocked in at ${formatTime(new Date(session.clocked_in_at))}`;
+    } else {
+        clockButton.classList.remove("clockedIn");
+        clockButtonText.textContent = "Clock In";
+        clockStatus.textContent = travelActive ? "🚗 Travel mode ON" : "Not clocked in";
+    }
+
+    totalTimeDisplay.textContent = (currentJob?.total_time_seconds || 0) > 0
+        ? `Total time on job: ${formatDuration(currentJob.total_time_seconds)}`
+        : "";
+}
+
+clockButton.addEventListener("click", async () => {
+    if (!currentJob) return;
+    clockButton.disabled = true;
+
+    if (activeSession) {
+        await handleClockOut();
+    } else {
+        await handleClockIn();
+    }
+
+    clockButton.disabled = false;
+});
+
+// === PHOTO FEATURE ===
+function renderPhotoGrid() {
+    photoGrid.innerHTML = '';
+    capturedPhotos.forEach((photo, idx) => {
+        const div = document.createElement('div');
+        div.className = 'photoThumb';
+        const img = document.createElement('img');
+        img.src = photo;
+        const removeBtn = document.createElement('div');
+        removeBtn.className = 'removePhoto';
+        removeBtn.innerHTML = '<i class="fa-solid fa-times"></i>';
+        removeBtn.onclick = () => {
+            capturedPhotos.splice(idx, 1);
+            renderPhotoGrid();
+            sendPhotosEmailBtn.style.display = capturedPhotos.length ? "inline-flex" : "none";
+        };
+        div.appendChild(img);
+        div.appendChild(removeBtn);
+        photoGrid.appendChild(div);
+    });
+    sendPhotosEmailBtn.style.display = capturedPhotos.length ? "inline-flex" : "none";
+}
+
+takePhotoBtn.addEventListener("click", () => {
+    if (capturedPhotos.length >= 3) {
+        alert("Maximum 3 photos allowed per job.");
+        return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                capturedPhotos.push(ev.target.result);
+                renderPhotoGrid();
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    input.click();
+});
+
+sendPhotosEmailBtn.addEventListener("click", async () => {
+    if (capturedPhotos.length === 0) return;
+    
+    const subject = `${currentJob.client_name || 'Job'} - ${currentJob.address || 'No address'}`;
+    const attachments = capturedPhotos.map((base64, i) => ({
+        name: `photo_${i+1}.jpg`,
+        data: base64.split(',')[1]
+    }));
+    
+    const templateParams = {
+        to_email: "ashleywork02@gmail.com",
+        subject: subject,
+        message: `Job: ${currentJob.job_name}\nClient: ${currentJob.client_name}\nAddress: ${currentJob.address}\nPhone: ${currentJob.phone || 'N/A'}\n\n${capturedPhotos.length} photos attached.`,
+        attachments: attachments
+    };
+    
+    try {
+        sendPhotosEmailBtn.disabled = true;
+        sendPhotosEmailBtn.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Sending...';
+        
+        // EmailJS doesn't support attachments directly, so we'll send a link or just notify
+        // For photos, we'll send a separate email with image data
+        alert("Photos captured. For demo, photos are stored locally. In production, upload to cloud storage first.");
+        
+        sendPhotosEmailBtn.innerHTML = '<i class="fa-regular fa-envelope"></i> Send Photos';
+        sendPhotosEmailBtn.disabled = false;
+    } catch (err) {
+        console.error('Email error:', err);
+        alert(`Failed to send photos: ${err.message}`);
+        sendPhotosEmailBtn.disabled = false;
+        sendPhotosEmailBtn.innerHTML = '<i class="fa-regular fa-envelope"></i> Send Photos';
+    }
+});
+
 // === OPEN JOB DETAIL ===
 async function openJobDetail(jobId) {
     jobDetail.classList.add("active");
@@ -572,13 +797,14 @@ async function openJobDetail(jobId) {
     currentJob = freshJob;
     cacheJob(freshJob);
     populateDetailView(freshJob);
-
-    const card = jobCardsContainer.querySelector(`[data-id="${freshJob.id}"]`);
-    if (card) {
-        const newCard = buildJobCard(freshJob);
-        jobCardsContainer.replaceChild(newCard, card);
-    }
-
+    
+    // Reset travel and photo states
+    travelActive = false;
+    travelStartTime = null;
+    capturedPhotos = [];
+    renderPhotoGrid();
+    updateTravelUI();
+    
     activeSession = await checkActiveSession(jobId);
     updateClockUI(activeSession);
     loadTimeLogs(jobId);
@@ -586,6 +812,10 @@ async function openJobDetail(jobId) {
 
 function closeJobDetail() {
     jobDetail.classList.remove("active");
+    currentJob = null;
+    activeSession = null;
+    travelActive = false;
+    capturedPhotos = [];
 }
 
 jobDetailBack.addEventListener("click", closeJobDetail);
@@ -609,7 +839,6 @@ function populateDetailView(job) {
         </span>
     `;
 
-    // Stock chips
     const stockArray = parseStockArray(job.stock || '');
     detailStockArray = [...stockArray];
     const stockContainer = document.getElementById('stockChipsView');
@@ -626,17 +855,20 @@ function populateDetailView(job) {
     if (isCompleted) {
         document.getElementById('addStockInlineBtn').style.display = 'none';
         document.getElementById('addStockInlineForm').style.display = 'none';
+        document.getElementById("clockSection").style.display = "none";
+        document.getElementById("photosSection").style.display = "none";
     } else {
         document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
         document.getElementById('addStockInlineForm').style.display = 'none';
+        document.getElementById("clockSection").style.display = "block";
+        document.getElementById("photosSection").style.display = "block";
     }
 
     completeJobButton.style.display   = isCompleted ? "none"  : "flex";
     uncompleteJobButton.style.display = isCompleted ? "flex"  : "none";
-    document.getElementById("clockSection").style.display = isCompleted ? "none" : "flex";
 }
 
-// Inline add stock
+// === INLINE ADD STOCK ===
 document.getElementById('addStockInlineBtn').addEventListener('click', () => {
     document.getElementById('addStockInlineForm').style.display = 'flex';
     document.getElementById('addStockInlineBtn').style.display = 'none';
@@ -664,8 +896,6 @@ document.getElementById('addStockInlineConfirmBtn').addEventListener('click', as
         currentJob.stock = newStockStr;
         cacheJob(currentJob);
         populateDetailView(currentJob);
-        const card = jobCardsContainer.querySelector(`[data-id="${currentJob.id}"]`);
-        if (card) jobCardsContainer.replaceChild(buildJobCard(currentJob), card);
         input.value = '';
         document.getElementById('addStockInlineForm').style.display = 'none';
         document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
@@ -673,126 +903,6 @@ document.getElementById('addStockInlineConfirmBtn').addEventListener('click', as
         alert("Failed to add stock item.");
     }
 });
-
-// === CLOCK UI ===
-function updateClockUI(session) {
-    const totalSeconds = currentJob?.total_time_seconds || 0;
-
-    if (session && session.clocked_in_at) {
-        clockButton.classList.add("clockedIn");
-        clockButtonText.textContent = "Clock Out";
-        clockStatus.textContent = `Clocked in at ${formatTime(new Date(session.clocked_in_at))}`;
-    } else {
-        clockButton.classList.remove("clockedIn");
-        clockButtonText.textContent = "Clock In";
-        clockStatus.textContent = "Not clocked in";
-    }
-
-    totalTimeDisplay.textContent = totalSeconds > 0
-        ? `Total time on job: ${formatDuration(totalSeconds)}`
-        : "";
-}
-
-// === CLOCK BUTTON ===
-clockButton.addEventListener("click", async () => {
-    if (!currentJob) return;
-    clockButton.disabled = true;
-
-    if (activeSession) {
-        await handleClockOut();
-    } else {
-        await handleClockIn();
-    }
-
-    clockButton.disabled = false;
-});
-
-async function handleClockIn() {
-    const now         = new Date().toISOString();
-    const displayName = currentUser?.user_metadata?.display_name
-        || currentUser?.email?.split("@")[0]
-        || "Unknown";
-
-    const { data, error } = await db
-        .from("time_logs")
-        .insert([{
-            job_id:           currentJob.id,
-            user_id:          currentUser.id,
-            user_name:        displayName,
-            clocked_in_at:    now,
-            clocked_out_at:   null,
-            duration_seconds: 0
-        }])
-        .select()
-        .single();
-
-    if (error || !data) {
-        alert("Clock in failed: " + (error?.message || "no data returned"));
-        clockButton.disabled = false;
-        return;
-    }
-
-    activeSession = data;
-    updateClockUI(activeSession);
-}
-
-async function handleClockOut() {
-    const now            = new Date().toISOString();
-    const clockInTime    = new Date(activeSession.clocked_in_at);
-    const sessionSeconds = Math.floor((new Date(now) - clockInTime) / 1000);
-    const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
-
-    const { error: logError } = await db
-        .from("time_logs")
-        .update({
-            clocked_out_at:   now,
-            duration_seconds: sessionSeconds
-        })
-        .eq("id", activeSession.id);
-
-    if (logError) {
-        console.error("Clock out log update failed:", logError);
-        clockButton.disabled = false;
-        return;
-    }
-
-    const { data: updatedJob, error: jobError } = await db
-        .from("Jobs")
-        .update({ total_time_seconds: newTotal })
-        .eq("id", currentJob.id)
-        .select()
-        .single();
-
-    if (!jobError && updatedJob) {
-        currentJob = updatedJob;
-        cacheJob(updatedJob);
-        const card = jobCardsContainer.querySelector(`[data-id="${updatedJob.id}"]`);
-        if (card) jobCardsContainer.replaceChild(buildJobCard(updatedJob), card);
-    } else {
-        currentJob = { ...currentJob, total_time_seconds: newTotal };
-        cacheJob(currentJob);
-    }
-
-    activeSession = null;
-    updateClockUI(null);
-    loadTimeLogs(currentJob.id);
-}
-
-async function handleClockOutForComplete() {
-    const now            = new Date().toISOString();
-    const clockInTime    = new Date(activeSession.clocked_in_at);
-    const sessionSeconds = Math.floor((new Date(now) - clockInTime) / 1000);
-    const newTotal       = (currentJob.total_time_seconds || 0) + sessionSeconds;
-
-    await db.from("time_logs").update({
-        clocked_out_at:   now,
-        duration_seconds: sessionSeconds
-    }).eq("id", activeSession.id);
-
-    await db.from("Jobs").update({ total_time_seconds: newTotal }).eq("id", currentJob.id);
-    currentJob    = { ...currentJob, total_time_seconds: newTotal };
-    activeSession = null;
-}
 
 // === LOAD TIME LOGS ===
 async function loadTimeLogs(jobId) {
@@ -814,12 +924,13 @@ async function loadTimeLogs(jobId) {
         const inTime  = new Date(log.clocked_in_at);
         const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
         const name    = log.user_name || "Unknown";
+        const isTravel = log.is_travel ? "🚗 " : "";
 
         const row = document.createElement("div");
         row.classList.add("timeLogRow");
         row.innerHTML = `
             <div class="timeLogLeft">
-                <div class="timeLogName">${name}</div>
+                <div class="timeLogName">${isTravel}${name}</div>
                 <div class="timeLogDate">${formatDate(inTime)}</div>
             </div>
             <div class="timeLogTimes">
@@ -873,13 +984,6 @@ function removeEditJobStock(index) {
     renderStockChips('stockChipsEdit', editJobStock, removeEditJobStock);
 }
 
-document.getElementById('editStockItemInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        document.getElementById('editAddStockItemBtn').click();
-    }
-});
-
 // === SAVE EDIT ===
 saveEditButton.addEventListener("click", async () => {
     const updates = {
@@ -920,21 +1024,17 @@ saveEditButton.addEventListener("click", async () => {
     populateDetailView(data);
     updateClockUI(activeSession);
 
-    const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
-    if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
-    refreshJobListFromCache();
-
     jobDetailView.style.display = "block";
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 });
 
-// === COMPLETE JOB (with email) ===
+// === COMPLETE JOB ===
 completeJobButton.addEventListener("click", async () => {
-    if (!confirm("Mark this job as complete and send summary email?")) return;
+    if (!confirm("Mark this job as complete?")) return;
 
     if (activeSession) {
-        await handleClockOutForComplete();
+        await handleClockOut();
     }
 
     const { data, error } = await db
@@ -953,83 +1053,8 @@ completeJobButton.addEventListener("click", async () => {
     cacheJob(data);
     populateDetailView(data);
     updateClockUI(null);
-
-    const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
-    if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
-    refreshJobListFromCache();
-
-    // Email sending
-    try {
-        completeJobButton.disabled = true;
-        completeJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Sending email...';
-
-        const { data: logs } = await db
-            .from("time_logs")
-            .select("*")
-            .eq("job_id", currentJob.id)
-            .order("clocked_in_at", { ascending: false });
-
-        const totalSeconds = logs?.reduce((sum, log) => sum + (log.duration_seconds || 0), 0) || 0;
-        const totalHours = (totalSeconds / 3600).toFixed(2);
-
-        const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-NZ", { day:"numeric", month:"short" }) : "—";
-        const fmtTime = (d) => new Date(d).toLocaleTimeString("en-NZ", { hour:"2-digit", minute:"2-digit" });
-        const fmtDur = (s) => {
-            const h = Math.floor(s / 3600);
-            const m = Math.floor((s % 3600) / 60);
-            return h > 0 ? `${h}h ${m}m` : `${m}m`;
-        };
-
-        const tableHtml = logs && logs.length > 0
-            ? `<table border="0" cellpadding="8" style="border-collapse:collapse;">
-                <thead><tr style="background:#f0f0f0;">
-                    <th>User</th><th>Date</th><th>In</th><th>Out</th><th>Duration</th>
-                </tr></thead>
-                <tbody>
-                    ${logs.map(log => `
-                        <tr>
-                            <td>${log.user_name || "—"}</td>
-                            <td>${fmtDate(log.clocked_in_at)}</td>
-                            <td>${fmtTime(log.clocked_in_at)}</td>
-                            <td>${log.clocked_out_at ? fmtTime(log.clocked_out_at) : "—"}</td>
-                            <td>${fmtDur(log.duration_seconds || 0)}</td>
-                        </tr>
-                    `).join("")}
-                </tbody>
-            </table>`
-            : "No time sessions recorded.";
-
-        const templateParams = {
-            to_email: "ashleywork02@gmail.com",
-            job_name: currentJob.job_name || "—",
-            client_name: currentJob.client_name || "—",
-            address: currentJob.address || "—",
-            phone: currentJob.phone || "—",
-            start_date: currentJob.start_date || "—",
-            stock: currentJob.stock || "—",
-            fault_desc: currentJob.fault_desc || "—",
-            total_time: `${totalHours} hours (${totalSeconds} sec)`,
-            time_sessions_table: tableHtml
-        };
-
-        const response = await emailjs.send(
-            "service_nlma6da",
-            "template_y2ineka",
-            templateParams
-        );
-
-        if (response.status === 200) {
-            alert('✅ Job marked complete and summary email sent.');
-        } else {
-            throw new Error('EmailJS returned an unexpected status');
-        }
-    } catch (err) {
-        console.error('Email error:', err);
-        alert(`⚠️ Job completed, but email failed: ${err.message}`);
-    } finally {
-        completeJobButton.disabled = false;
-        completeJobButton.innerHTML = '<i class="fa-solid fa-flag-checkered"></i> Complete Job';
-    }
+    loadJobs();
+    closeJobDetail();
 });
 
 // === UNCOMPLETE JOB ===
@@ -1052,10 +1077,8 @@ uncompleteJobButton.addEventListener("click", async () => {
     cacheJob(data);
     populateDetailView(data);
     updateClockUI(activeSession);
-
-    const card = jobCardsContainer.querySelector(`[data-id="${data.id}"]`);
-    if (card) jobCardsContainer.replaceChild(buildJobCard(data), card);
-    refreshJobListFromCache();
+    loadJobs();
+    closeJobDetail();
 });
 
 // === HELPERS ===

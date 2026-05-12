@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -12,7 +12,7 @@
     <title>JobTrack</title>
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="style1.css" />
+    <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
@@ -129,7 +129,6 @@
                 <label class="formHeader">Start Date</label>
                 <input type="date" class="newJobInput" id="startDate" />
             </div>
-            <!-- Stock chip input (create form) -->
             <div class="formGroup">
                 <label class="formHeader">Stock / Materials Needed</label>
                 <div id="stockInputContainer" class="stockInputContainer">
@@ -164,14 +163,32 @@
                 </div>
             </div>
 
-            <!-- Clock In/Out -->
+            <!-- Travel + Clock Section -->
             <div id="clockSection">
+                <div class="travelButtonRow">
+                    <button id="travelOnBtn" class="travelBtn"><i class="fa-solid fa-car"></i> Travel On</button>
+                    <button id="travelOffBtn" class="travelBtn"><i class="fa-solid fa-flag-checkered"></i> Travel Off</button>
+                </div>
                 <button id="clockButton">
                     <i class="fa-solid fa-clock"></i>
                     <span id="clockButtonText">Clock In</span>
                 </button>
                 <p id="clockStatus"></p>
                 <p id="totalTimeDisplay"></p>
+            </div>
+
+            <!-- Photos Section -->
+            <div id="photosSection">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span class="detailLabel">Job Photos (max 3)</span>
+                    <button id="takePhotoBtn" class="stockAddBtn" style="padding: 8px 12px;">
+                        <i class="fa-solid fa-camera"></i> Take Photo
+                    </button>
+                </div>
+                <div id="photoGrid" class="photoGrid"></div>
+                <button id="sendPhotosEmailBtn" class="sendPhotosBtn" style="display: none;">
+                    <i class="fa-regular fa-envelope"></i> Send Photos via Email
+                </button>
             </div>
 
             <!-- Job Info (view mode) -->
@@ -200,7 +217,6 @@
                     <span class="detailLabel">Start Date</span>
                     <span class="detailValue" id="detailStartDate"></span>
                 </div>
-                <!-- Stock display with chips + inline add -->
                 <div class="detailRow">
                     <span class="detailLabel">Stock</span>
                     <div class="detailValue" id="detailStock">
@@ -249,7 +265,6 @@
                     <label class="formHeader">Start Date</label>
                     <input type="date" class="newJobInput" id="editStartDate" />
                 </div>
-                <!-- Stock chip input (edit mode) -->
                 <div class="formGroup">
                     <label class="formHeader">Stock / Materials Needed</label>
                     <div id="editStockContainer" class="stockInputContainer">

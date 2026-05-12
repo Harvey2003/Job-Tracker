@@ -204,7 +204,6 @@ body {
     margin-top: 8vw;
 }
 
-/* === NAV ITEMS === */
 .navItem {
     display: flex;
     align-items: center;
@@ -337,6 +336,7 @@ body {
     border: 2px dashed #e5e7eb;
     background-color: transparent;
     transition: all 0.25s ease;
+    cursor: pointer;
 }
 
 #addJob:hover,
@@ -387,11 +387,12 @@ body {
     cursor: pointer;
     transition: transform 0.1s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
+    margin-bottom: 3vw;
 }
 
 .jobCard:active {
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
     border-color: #f59e0b;
 }
 
@@ -421,7 +422,7 @@ body {
     padding: 0.35em 1em;
     border-radius: 100px;
     letter-spacing: 0.02em;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
 /* === STATUS GROUP HEADERS (collapsible) === */
@@ -491,7 +492,7 @@ body {
     100% { background-position: 200% 0; }
 }
 
-/* === NEW JOB FORM (refined) === */
+/* === NEW JOB FORM === */
 #newJobForm {
     display: none;
     position: fixed;
@@ -518,7 +519,7 @@ body {
     flex-direction: column;
     gap: 0;
     overflow-y: auto;
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-bottom: none;
     animation: slideUp 0.25s ease;
@@ -685,7 +686,7 @@ textarea {
     padding: 6px 14px;
     border-radius: 20px;
     border: 1px solid #fed7aa;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .stockChip .removeChip {
@@ -854,19 +855,48 @@ textarea {
     color: #f59e0b;
 }
 
-/* === CLOCK SECTION === */
+/* === CLOCK & TRAVEL SECTION === */
 #clockSection {
     background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
     border: 1px solid #1f2937;
-    border-radius: 16px;
+    border-radius: 20px;
     padding: 5vw;
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 3vw;
 }
 
-#clockButton {
+.travelButtonRow {
+    display: flex;
+    gap: 12px;
+}
+
+.travelBtn {
+    flex: 1;
+    height: 48px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    background-color: #374151;
+    color: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.travelBtn.activeTravel {
+    background-color: #f59e0b;
+    color: #111827;
+}
+
+.travelBtn:active {
+    transform: scale(0.97);
+}
+
+.clockButton {
     width: 100%;
     height: 64px;
     border: none;
@@ -884,18 +914,18 @@ textarea {
     -webkit-tap-highlight-color: transparent;
 }
 
-#clockButton.clockedIn {
+.clockButton.clockedIn {
     background-color: #dc2626;
     color: #ffffff;
 }
 
-#clockButton:active {
+.clockButton:active {
     opacity: 0.85;
 }
 
 #clockStatus {
     font-size: 0.8rem;
-    color: #6b7280;
+    color: #9ca3af;
     text-align: center;
 }
 
@@ -904,6 +934,74 @@ textarea {
     font-weight: 600;
     color: #f59e0b;
     text-align: center;
+}
+
+/* === PHOTOS SECTION === */
+#photosSection {
+    background-color: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    padding: 4vw;
+}
+
+.photoGrid {
+    display: flex;
+    gap: 12px;
+    margin: 16px 0;
+    flex-wrap: wrap;
+}
+
+.photoThumb {
+    width: 80px;
+    height: 80px;
+    background-color: #f3f4f6;
+    border-radius: 12px;
+    position: relative;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+
+.photoThumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photoThumb .removePhoto {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #dc2626;
+    color: white;
+    border-radius: 20px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.sendPhotosBtn {
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.sendPhotosBtn:active {
+    background-color: #059669;
 }
 
 /* === DETAIL ROWS === */
@@ -958,16 +1056,14 @@ textarea {
     background-color: #d97706;
 }
 
-#completeJobButton {
-    background-color: #16a34a !important;
-    color: #ffffff;
-}
-
-#completeJobButton:active {
-    background-color: #15803d !important;
-}
-
 /* === TIME LOGS === */
+#timeLogsSection {
+    background-color: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    padding: 4vw 5vw;
+}
+
 .sectionSubTitle {
     font-size: 0.75rem;
     font-weight: 600;
@@ -975,13 +1071,6 @@ textarea {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     margin-bottom: 2vw;
-}
-
-#timeLogsSection {
-    background-color: #ffffff;
-    border-radius: 16px;
-    border: 1px solid #e5e7eb;
-    padding: 4vw 5vw;
 }
 
 .timeLogRow {
@@ -1033,6 +1122,16 @@ textarea {
     font-weight: 700;
     color: #111827;
     text-align: right;
+}
+
+/* === ACTION BUTTONS === */
+#completeJobButton {
+    background-color: #16a34a !important;
+    color: #ffffff;
+}
+
+#completeJobButton:active {
+    background-color: #15803d !important;
 }
 
 #uncompleteJobButton {
