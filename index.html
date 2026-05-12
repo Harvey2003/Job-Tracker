@@ -140,7 +140,6 @@
                         </button>
                     </div>
                 </div>
-                <input type="hidden" id="inputStock" />
             </div>
             <button class="formButton" id="newJobButton">
                 <i class="fa-solid fa-check"></i> Create Job
@@ -169,7 +168,7 @@
                     <button id="travelOnBtn" class="travelBtn"><i class="fa-solid fa-car"></i> Travel On</button>
                     <button id="travelOffBtn" class="travelBtn"><i class="fa-solid fa-flag-checkered"></i> Travel Off</button>
                 </div>
-                <button id="clockButton">
+                <button id="clockButton" class="clockButton">
                     <i class="fa-solid fa-clock"></i>
                     <span id="clockButtonText">Clock In</span>
                 </button>
@@ -178,7 +177,7 @@
             </div>
 
             <!-- Photos Section -->
-            <div id="photosSection">
+            <div id="photosSection" class="detailCard">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <span class="detailLabel">Job Photos (max 3)</span>
                     <button id="takePhotoBtn" class="stockAddBtn" style="padding: 8px 12px;">
@@ -192,7 +191,7 @@
             </div>
 
             <!-- Job Info (view mode) -->
-            <div id="jobDetailView">
+            <div id="jobDetailView" class="detailCard">
                 <div class="detailRow">
                     <span class="detailLabel">Job Name</span>
                     <span class="detailValue" id="detailJobName"></span>
@@ -240,7 +239,7 @@
             </div>
 
             <!-- Job Info (edit mode) -->
-            <div id="jobDetailEdit" style="display:none;">
+            <div id="jobDetailEdit" class="detailCard" style="display:none;">
                 <div class="formGroup">
                     <label class="formHeader">Job Name</label>
                     <input class="newJobInput" id="editJobName" />
@@ -276,7 +275,6 @@
                             </button>
                         </div>
                     </div>
-                    <input type="hidden" id="editStock" />
                 </div>
                 <button class="formButton" id="saveEditButton">
                     <i class="fa-solid fa-check"></i> Save Changes
@@ -284,7 +282,7 @@
             </div>
 
             <!-- Time Logs -->
-            <div id="timeLogsSection">
+            <div id="timeLogsSection" class="detailCard">
                 <p class="sectionSubTitle">Time Sessions</p>
                 <div id="timeLogsContainer"></div>
             </div>
@@ -293,7 +291,6 @@
             <button class="formButton" id="completeJobButton">
                 <i class="fa-solid fa-flag-checkered"></i> Complete Job
             </button>
-
             <button class="formButton" id="uncompleteJobButton" style="display:none;">
                 <i class="fa-solid fa-rotate-left"></i> Mark as Active
             </button>
