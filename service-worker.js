@@ -1,7 +1,7 @@
 // JobTrack Service Worker — GitHub Pages Optimized
 // VERSION: v2  |  Updated: 2025-06-09T14:37Z
 
-const CACHE_NAME = 'jobtrack-v2';
+const CACHE_NAME = 'jobtrack-v3';
 const APP_ASSETS = [
     '/Job-Tracker/icon-192.png',
     '/Job-Tracker/icon-512.png'
