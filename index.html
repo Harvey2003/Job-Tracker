@@ -310,30 +310,11 @@
     <script src="script.js"></script>
 
     <!-- Auto-Update System: Detect new service worker & notify user -->
-    <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;
-font-size:14px;margin:0;position:sticky;top:0;z-index:9999;cursor:pointer">
-      <span>New version available!</span>
-      <button onclick="location.reload(true)" style="background:#fff;color:#ea580c;border:none;padding:5px 12px;
-cursor:pointer;margin-left:8px;border-radius:3px;font-weight:bold">Reload</button>
+    <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;font-size:14px;margin:0;position:sticky;top:0;z-index:9999;">
+        <span>New version available!</span>
+        <button id="reloadBtn" style="background:#fff;color:#ea580c;border:none;padding:5px 12px;margin-left:8px;border-radius:3px;font-weight:bold">Reload</button>
     </div>
 
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/Job-Tracker/service-worker.js')
-                .then(reg => console.log('[SW] Registered:', reg))
-                .catch(e => console.warn('[SW] Registration failed', e));
-
-            const bannerEl = document.getElementById('appBanner');
-            let notified = false;
-
-            navigator.serviceWorker.onmessage = function(e) {
-                if (e.data && e.data.action === 'UPDATE_AVAILABLE' && !notified) {
-                    bannerEl.style.display = 'block';
-                    notified = true;
-                    console.log('[SW] Update detected — banner shown');
-                }
-            };
-        }
-    </script>
+    <script src="/Job-Tracker/update-check.js"></script>
 </body>
 </html>
