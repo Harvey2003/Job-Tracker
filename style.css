@@ -768,3 +768,103 @@ textarea {
 #uncompleteJobButton {
     background-color: #6b7280 !important;
 }
+/* === FORCE UPDATE BUTTON & DOWNLOAD BAR STYLES === */
+#forceUpdateSection:active { background-color: #1f2937; color: #f59e0b; }
+.force-update-indicator {
+    display: none;
+    position: fixed;
+    bottom: 8vw;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(245, 158, 11, 0.95);
+    color: #ffffff;
+    padding: 3vw 6vw;
+    border-radius: 50px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
+    z-index: 9999;
+    text-align: center;
+}
+.force-update-indicator.show { display: block; animation: slideUpFadeIn 0.3s ease forwards; }
+@keyframes slideUpFadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Download progress bar */
+#downloadProgressBarContainer {
+    display: none;
+    position: fixed;
+    top: 64px; /* below nav */
+    left: 5vw;
+    right: 5vw;
+    height: 8px;
+    background-color: #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    z-index: 9998;
+}
+#downloadProgressBarContainer.show { display: block; }
+#downloadProgressFill {
+    height: 100%;
+    width: 0%;
+    background-color: #f59e0b;
+    border-radius: 10px;
+    transition: width 0.3s ease, background-color 0.2s ease;
+}
+#downloadProgressBarContainer.show #downloadProgressFill { animation: progressPulse 2s linear infinite; }
+@keyframes progressPulse { from { opacity: 1; } to { opacity: 0.85; } }
+
+/* Toast notification for force update */
+.toast-notification {
+    display: none;
+    position: fixed;
+    top: 64px; /* below nav */
+    right: 2vw;
+    background-color: #1f2937;
+    color: #f59e0b;
+    padding: 2.5vw 4vw;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    z-index: 9997;
+}
+.toast-notification.show { display: block; animation: slideInRight 0.3s ease forwards; }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+
+/* === CACHE CLEAR INDICATOR (optional visual cue) === */
+#cacheClearedBadge {
+    display: none;
+    position: fixed;
+    top: 64px; left: 5vw;
+    background-color: #1f2937;
+    color: #ffffff;
+    padding: 1.5vw 3vw;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    z-index: 9996;
+}
+#cacheClearedBadge.show { display: block; animation: slideInLeft 0.3s ease forwards; }
+@keyframes slideInLeft { from { opacity: 0; transform: translateX(-100%); } to { opacity: 1; transform: translateX(0); } }
+
+/* === FORCE UPDATE CONFIRMATION MODAL (optional) === */
+#forceUpdateConfirmModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0,0,0,0.6);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+#forceUpdateConfirmModal.show { display: flex; }
+.force-update-modal-card {
+    background-color: #ffffff;
+    border-radius: 24px;
+    padding: 6vw;
+    max-width: 90%;
+    width: 380px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+}
+.force-update-modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 1vw; color: #1f2937; }
+.force-update-modal-body { font-size: 0.8rem; line-height: 1.6; color: #4b5563; margin-bottom: 2.5vw; min-height: 10em; }
+.force-update-warning-icon { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background-color: #fef3c7; border-radius: 50%; margin-bottom: 2vw; color: #d97706; font-size: 1.2rem; }
+.force-update-modal-actions { display: flex; gap: 1.5vw; justify-content: center; }

@@ -714,3 +714,97 @@ sendPhotosEmailBtn.addEventListener("click", () => {
     window.location.href = `mailto:ashleywork02@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     alert("Your email client will open. Please send the email manually.");
 });
+
+// === FORCE UPDATE FUNCTIONALITY ===
+const forceUpdateSection = document.getElementById('forceUpdateSection');
+let swRegistrationPromise = null;
+
+function registerSW() {
+    if ('serviceWorker' in navigator) {
+        return navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW registered:', reg.scope))
+            .catch(err => console.error('SW registration failed:', err));
+    }
+}
+
+// Force update button click handler
+forceUpdateSection.addEventListener('click', async () => {
+    // Show progress bar and toast
+    document.getElementById('downloadProgressBarContainer')?.classList.add('show');
+
+    const progressBar = document.querySelector('#downloadProgressFill');
+    let width = 0;
+
+    try {
+        if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.ready;
+
+            // Clear all caches (app shell + dynamic content)
+            for (const cacheName of ['job-tracker-shell', 'dynamic-content']) {
+                await caches.delete(cacheName);
+            }
+
+            // Send skipWaiting message if SW is waiting
+            try {
+                reg.active?.postMessage({ type: 'SKIP_WAITING' });
+            } catch {}
+
+            // Unregister current SW to force fresh install from cache busting
+            await navigator.serviceWorker.unregister();
+
+            // Reload with cache-bust query string
+            const url = new URL(window.location.href);
+            url.searchParams.set('_cache_bust', Date.now().toString());
+            window.location.replace(url.toString());
+        } else {
+            throw new Error('Service Workers not supported');
+        }
+
+    } catch (err) {
+        console.error(err);
+    } finally {
+        // Hide progress bar after 2.5s animation completes
+        setTimeout(() => {
+            document.getElementById('downloadProgressBarContainer')?.classList.remove('show');
+            progressBar.style.width = '0%';
+        }, 3000);
+
+        // Show success toast (if no errors)
+        showToast('Cache cleared! Reloading...', '#f59e0b');
+    }
+});
+
+// Helper: Toast notification function
+function showToast(message, color = '#16a34a') {
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification show';
+    toast.textContent = message;
+    toast.style.color = color;
+
+    // Insert after nav bar
+    const navBar = document.getElementById('navBar');
+    if (navBar) {
+        navBar.parentNode.insertBefore(toast, navBar.nextSibling);
+    } else {
+        document.body.appendChild(toast);
+    }
+}
+
+// === CACHE CLEAR INDICATOR ===
+function showCacheClearedBadge() {
+    const badge = document.createElement('div');
+    badge.id = 'cacheClearedBadge';
+    badge.className = 'show';
+    badge.textContent = '✓ Cache cleared! Reloading...';
+
+    // Insert after nav bar
+    const navBar = document.getElementById('navBar');
+    if (navBar) {
+        navBar.parentNode.insertBefore(badge, navBar.nextSibling);
+    } else {
+        document.body.appendChild(badge);
+    }
+}
+
+// Register SW on page load
+registerSW();
