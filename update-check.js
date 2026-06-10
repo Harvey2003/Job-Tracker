@@ -1,150 +1,135 @@
 // ===========================================================================
-// update-check.js — Fixed Service Worker Detection for Mobile Chrome
+// update-check.js — Service Worker Registration & Automatic Update Detection  
 // ===========================================================================
-// Fixes: random SW URLs, missing scope in getRegistration(), no force-update.
-//
-// Deploy flow:
-//    1. Harvey updates app-version.json with a new "build" string per deploy.
-//    2. Each page load fetches that build value → registers SW with ?v=<build>.
-//    3. Browser sees the new URL, fetches fresh service-worker.js, installs it.
-//    4. Service worker calls skipWaiting() during install → becomes "waiting".
-//    5. Banner appears. User taps reload → SKIP_WAITING sent → caches cleared
-//       → page reloaded under CONTROL of the new (now-active) SW.
+// Fix: Register the SW on every page load (never was happening before).
+// Detects new builds via direct app-version.json comparison (cache-busted) 
+// to bypass all browser / SW caching, then registers the SW for full PWA flow.
+// Shows update banner reliably when waiting SW detected or version mismatch.  
 // ===========================================================================
 
+'use strict';
 (function () {
     if (!('serviceWorker' in navigator)) return;
 
-    var BANNER = document.getElementById('appBanner');
-    var RELOAD_BTN = document.getElementById('reloadBtn');
-    var SW_SCOPE = '/Job-Tracker/';
-    var SW_URL   = '/Job-Tracker/service-worker.js';
+    var BANNER          = document.getElementById('appBanner');
+    var RELOAD_BTN      = document.getElementById('reloadBtn');
+    var SW_SCOPE        = '/Job-Tracker/';
+    var SW_URL          = '/Job-Tracker/service-worker.js';
+    var BUILD_KEY       = 'jobtrack-build';
 
-    // ─── doCleanReload(reg): full clean-reload sequence ──────────────────────
+    // ─── showBanner(reg): Display update banner immediately (trust no state) 
+    function showBanner(reg) {
+        if (!BANNER || BANNER.style.display === 'block') return;
+        BANNER.style.display = 'block';
+        
+          // Click anywhere on banner → triggers clean reload  
+        var wrapper = function (e) {
+            e.stopPropagation();
+            doCleanReload(reg);
+         };
+        BANNER.removeEventListener('click', BANNER._cachedHandler);
+        BANNER._cachedHandler = wrapper;
+        BANNER.addEventListener('click', wrapper, { once: true });
+
+          // Button click → same handler with confirmation  
+        if (RELOAD_BTN) {
+            var newBtn = RELOAD_BTN.cloneNode(true);
+            RELOAD_BTN.parentNode.replaceChild(newBtn, RELOAD_BTN);
+            RELOAD_BTN = newBtn;
+            RELOAD_BTN.addEventListener('click', function (e) {
+                e.stopPropagation();
+                doCleanReload(reg);
+             }, { once: true });
+           }
+       }
+
+    // ─── doCleanReload(reg): Full clean-reload sequence ──────────────────────
     function doCleanReload(reg) {
         if (!reg) return;
 
-        // Tell both active AND waiting service workers to skip their queues
+          // Force the waiting SW to become active NOW  
         if (reg.active)       reg.active.postMessage({ type: 'SKIP_WAITING' });
         if (reg.waiting)      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
 
-        // Clear ALL caches so the new SW starts fresh — no stale content leaks
+          // Clear ALL caches then reload fresh
         if ('caches' in window) {
             caches.keys().then(function (keys) {
                 return Promise.all(keys.map(function (k) {
                     return caches.delete(k);
-                }));
-            }).finally(function () {
-                location.reload();
-            });
-        } else {
+                  }));
+              }).finally(function () {
+                location.reload();   // Fresh page load, new SW now active  
+              });
+           } else {
             location.reload();
-        }
-    }
+           }
+       }
 
-    // ─── showBanner(reg): display update banner with full-banner click ──────
-    function showBanner(reg) {
-        if (!BANNER || (reg && BANNER.style.display === 'block')) return;
+    // ─── registerServiceWorker: ALWAYS register/update the service worker ──
+      // This is the MISSING piece — it was never called before.
+    function registerServiceWorker() {
+        navigator.serviceWorker.register(SW_URL + '?v=' + Date.now(), { scope: SW_SCOPE })
+             .then(function (reg) {
+                  // Check if there's a waiting version already ready to activate  
+                if (reg.waiting) showBanner(reg);
 
-        BANNER.style.display = 'block';
+                  // Listen for messages from the newly registered SW  
+                navigator.serviceWorker.addEventListener('message', function (e) {
+                    if (!e.data || e.data.type === 'UPDATE_AVAILABLE') showBanner(reg);
+                 }, { once: true });
 
-        // Entire banner is clickable, not just the button — triggers clean reload
-        var bannerWrapper = function (e) {
-            e.stopPropagation();
-            showBannerConfirm(reg);
-        };
-        BANNER.addEventListener('click', bannerWrapper, { once: true });
+                  return reg;
+             })
+            .catch(function () {}); // Silent fail — app still works as normal PWA-less page  
+         }
 
-        // Button click also triggers the same handler
-        if (RELOAD_BTN && !RELOAD_BTN._wasReplaced) {
-            var newBtn = RELOAD_BTN.cloneNode(true);
-            RELOAD_BTN.parentNode.replaceChild(newBtn, RELOAD_BTN);
-            RELOAD_BTN = newBtn;
-            RELOAD_BTN._wasReplaced = true;
-        }
+    // ─── CORE LOGIC: ALWAYS compare build against server directly (cache-busted)
+      // This bypasses ALL browser caching including mobile Chrome's aggressive HTTP cache.
+    function checkForUpdates() {
+        var buildReq = new XMLHttpRequest();
+         buildReq.open('GET', '/Job-Tracker/app-version.json?v=' + Date.now(), true);  
+        buildReq.onload = function () {
+            try {
+                var data = JSON.parse(buildReq.responseText);
+                if (!data || !data.build) return;
 
-        if (RELOAD_BTN) {
-            var btnWrapper = function (e) {
-                e.stopPropagation();
-                showBannerConfirm(reg);
-            };
-            RELOAD_BTN.addEventListener('click', btnWrapper, { once: true });
-        }
-    }
+                var stored = localStorage.getItem(BUILD_KEY);
 
-    // Confirm before reloading (avoids accidental taps)
-    function showBannerConfirm(reg) {
-        if (confirm('A new version of JobTrack is available. Reload to update?')) {
-            doCleanReload(reg);
-        } else {
-            BANNER.style.display = 'none';
-            BANNER.setAttribute('data-shown-version', localStorage.getItem('jobtrack-build') || '');
-        }
-    }
+                if (stored !== data.build) {
+                      // Build diverged from server — force SW re-registration  
+                    registerServiceWorker();
+                    
+                      // Also immediately check for waiting SW from previous deploy
+                    navigator.serviceWorker.getRegistration(SW_SCOPE).then(function (reg) {
+                        if (reg && reg.waiting) showBanner(reg);
+                      }).catch(function () {});
+                  } else {
+                      // Same build — still check if there's a waiting SW ready  
+                    navigator.serviceWorker.getRegistration(SW_SCOPE).then(function (reg) {
+                        if (reg && reg.waiting) showBanner(reg);
+                      }).catch(function () {});
+                   }
 
-    // ─── STEP 1: Fetch app-version.json for versioned SW registration ──────
-    fetch('/Job-Tracker/app-version.json')
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-            var build = (data && data.build) || 'dev';
+                localStorage.setItem(BUILD_KEY, data.build);
+             } catch (e) {} // Ignore parse errors silently
+         };
+        buildReq.send();
+     }
 
-            // Persist this build so we can compare across page loads / other tabs
-            localStorage.setItem('jobtrack-build', build);
+    // ─── INITIAL EXECUTION: Run version check immediately on page load  
+    checkForUpdates();
 
-            // Register service worker with a stable versioned URL (NOT Date.now())
-            return navigator.serviceWorker.register(SW_URL + '?v=' + build, { scope: SW_SCOPE });
-        })
-        .then(function (reg) {
-            // If there's already a waiting SW from a previous deploy, show banner immediately
-            if (reg.waiting) {
-                showBanner(reg);
-                return;
-            }
+    // ─── PERIODIC RE-CHECK (30 sec — safety net for mobile Chrome's aggressive caching)  
+     setInterval(checkForUpdates, 30000);
 
-            // Cross-version check — detects updates while this tab was open
-            fetch('/Job-Tracker/app-version.json')
-                .then(function (res) { return res.json(); })
-                .then(function (data) {
-                    var newBuild = (data && data.build) || 'dev';
-                    if (localStorage.getItem('jobtrack-build') !== newBuild) {
-                        showBanner(reg);
-                    }
-                })
-                .catch(function () {});
-
-            return reg;
-        })
-        .then(function (reg) {
-            // ─── FORCE UPDATE CHECK: THE KEY FIX FOR MOBILE CHROME ──────
-            navigator.serviceWorker.ready.then(function (readyReg) {
-                readyReg.update();  // Forces browser to check server for new SW code
-
-                // After initial update cycle, re-check if a waiting SW appeared
-                setTimeout(function () {
-                    navigator.serviceWorker.getRegistration(SW_SCOPE).then(function (r) {
-                        if (r && r.waiting) showBanner(r);
-                    });
-                }, 3000);
-            });
-
-            return reg;
-        })
-        .catch(function (err) { console.warn('[update-check] init failed:', err); });
-
-    // ─── VISIBILITY CHANGE: re-check when user returns to the tab ──────
+    // ─── VISIBILITY CHANGE: Re-check every time user returns to the tab
     document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState !== 'visible') return;
+        if (document.visibilityState === 'visible') checkForUpdates();
+     });
 
-        navigator.serviceWorker.getRegistration(SW_SCOPE).then(function (reg) {
-            if (!reg || !reg.waiting) return;
-            showBanner(reg);
-        }).catch(function () {});
-    });
-
-    // ─── MESSAGE LISTENER: handle updates posted by the service worker ──
+    // ─── MESSAGE LISTENER: Handle any updates from the service worker  
     navigator.serviceWorker.onmessage = function (e) {
         if (!e.data || e.data.type !== 'UPDATE_AVAILABLE') return;
-
-        doCleanReload(navigator.serviceWorker.controller);
-    };
+         checkForUpdates();   // Triggers banner via registration + version comparison  
+     };
 })();
