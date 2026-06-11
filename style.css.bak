@@ -614,7 +614,7 @@ textarea {
     font-size: 0.75rem;
     color: #9ca3af;
     text-align: center;
-    margin-top: 6px;
+    margin-top: -4px;
 }
 .divider {
     height: 1px;

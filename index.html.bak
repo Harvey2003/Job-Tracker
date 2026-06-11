@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+     <meta http-equiv="Expires" content="0" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="JobTrack" />
+    <meta name="application-name" content="JobTrack" />
+    <meta name="theme-color" content="#111827" />
+    <meta name="app-version" content="alpha-1f:20260611T1045Z">
+    <title>JobTrack</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen">
+        <div id="loginCard">
+            <p id="loginCompany">
+                <span style="color:#dc2626;">Electric</span><span style="color:#16a34a;">M8</span>
+            </p>
+            <p id="loginTitle">Sign in to JobTrack</p>
+            <p id="loginSub">Use your account credentials to continue</p>
+            <div class="formGroup">
+                <label class="formHeader">Email</label>
+                <input type="email" id="loginEmail" class="newJobInput" placeholder="you@example.com" />
+            </div>
+            <div class="formGroup">
+                <label class="formHeader">Password</label>
+                <input type="password" id="loginPassword" class="newJobInput" placeholder="••••••••" />
+            </div>
+            <p id="loginError"></p>
+            <button class="formButton" id="loginButton">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+            </button>
+        </div>
+    </div>
+
+    <!-- TOP NAV -->
+    <div id="topNavContainer">
+        <span id="companyName">
+            <i class="fa-solid fa-bolt" style="color:#f59e0b; margin-right:4px;"></i>
+            <span style="color:#dc2626;">Electric</span><span style="color:#16a34a;">M8</span>
+        </span>
+        <div id="welcomeMessage">
+            <p id="welcomeTitle">Welcome back</p>
+            <p id="welcomeSub">...</p>
+        </div>
+        <div id="openCloseNav">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div id="navOverlay"></div>
+    <div id="navBar">
+        <p id="navHeader">Menu</p>
+        <div class="navItem" id="jobsSection">
+            <i class="fa-solid fa-briefcase navIcon"></i>
+            <span>Jobs</span>
+        </div>
+        <div class="navItem" id="createJobSection">
+            <i class="fa-solid fa-plus navIcon"></i>
+            <span>Create Job</span>
+        </div>
+        <div class="navItem" id="forceUpdateSection">
+            <i class="fa-solid fa-rotate-left navIcon" style="color:#f59e0b;"></i>
+            <span>Force Update</span>
+        </div>
+        <div class="navItem" id="logoutButton">
+        <div class="navItem" id="settingsSection">
+            <i class="fa-solid fa-gear navIcon"></i>
+            <span>Settings</span>
+        </div>
+            <i class="fa-solid fa-arrow-right-from-bracket navIcon"></i>
+            <span>Sign Out</span>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="jobLists">
+        <div id="searchWrapper">
+            <i class="fa-solid fa-magnifying-glass searchIcon"></i>
+            <input type="text" id="searchInput" placeholder="Search jobs, clients, or addresses..." enterkeyhint="search" />
+            <button id="clearSearchButton" class="clearSearchButton" style="display:none;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="jobCard" id="addJob">
+            <div id="addJobInner">
+                <div id="addJobIcon">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <div id="addJobText">
+                    <p id="addJobTitle">New Job</p>
+                    <p id="addJobSub">Tap to create a new job</p>
+                </div>
+            </div>
+        </div>
+        <p id="sectionTitle">Active Jobs</p>
+        <div id="jobCardsContainer"></div>
+    </div>
+
+    <!-- NEW JOB FORM -->
+    <div id="newJobForm">
+        <div id="formCard">
+            <div id="formTitleRow">
+                <p id="formTitle">Create New Job</p>
+                <div id="formClose"><i class="fa-solid fa-xmark"></i></div>
+            </div>
+            <div class="formGroup">
+                <label class="formHeader">Job Name</label>
+                <input placeholder="e.g. Kitchen Rewire" class="newJobInput" id="inputJobName" />
+            </div>
+            <div class="formGroup">
+                <label class="formHeader">Fault Description</label>
+                <textarea placeholder="Job Description" id="inputFault"></textarea>
+            </div>
+            <div class="formGroup">
+                <label class="formHeader">Client Name</label>
+                <input placeholder="e.g. John Smith" class="newJobInput" id="inputClientName" />
+            </div>
+            <div class="formGroup">
+                <label class="formHeader">Address</label>
+                <input placeholder="e.g. 12 Example St" class="newJobInput" id="inputAddress" />
+            </div>
+            <div class="formGroup">
+                <label class="formHeader">Contact Phone</label>
+                <input placeholder="0220000000" class="newJobInput" id="inputPhone" />
+            </div>
+            <div class="formGroup">
+                <label class="formHeader">Start Date</label>
+                <input type="date" class="newJobInput" id="startDate" />
+            </div>
+            <div class="formGroup">
+                <label class="formHeader">Stock / Materials Needed</label>
+                <div id="stockInputContainer" class="stockInputContainer">
+                    <div id="stockChipsCreate" class="stockChips"></div>
+                    <div class="stockInputRow">
+                        <input placeholder="e.g. Cable, switches..." class="newJobInput" id="inputStockItem" />
+                        <button type="button" class="stockAddBtn" id="addStockItemBtn">
+                            <i class="fa-solid fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <button class="formButton" id="newJobButton">
+                <i class="fa-solid fa-check"></i> Create Job
+            </button>
+        </div>
+    </div>
+
+    <!-- JOB DETAIL PANEL -->
+    <div id="jobDetail">
+        <div id="jobDetailCard">
+
+            <!-- Header -->
+            <div id="jobDetailHeader">
+                <div id="jobDetailBack">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </div>
+                <p id="jobDetailTitle">Job Details</p>
+                <div id="jobDetailEditToggle">
+                    <i class="fa-solid fa-pen"></i>
+                </div>
+            </div>
+
+            <!-- Travel & Clock Section (combined card) -->
+            <div id="clockSection">
+                <!-- Travel button (single toggle) -->
+                <button id="travelToggleBtn" class="actionBtn travelBtn">
+                    <i class="fa-solid fa-car"></i> <span id="travelToggleText">Start Travel</span>
+                </button>
+                <div id="travelStatus" class="actionStatus"></div>
+
+                <div class="divider"></div>
+
+                <!-- Clock button -->
+                <button id="clockButton" class="actionBtn clockBtn">
+                    <i class="fa-solid fa-clock"></i> <span id="clockButtonText">Clock In</span>
+                </button>
+                <p id="clockStatus" class="actionStatus"></p>
+                <p id="totalTimeDisplay" class="totalTime"></p>
+            </div>
+
+            <!-- Photos Section -->
+            <div id="photosSection" class="detailCard">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span class="detailLabel">Job Photos (max 3)</span>
+                    <button id="takePhotoBtn" class="stockAddBtn" style="padding: 8px 12px;">
+                        <i class="fa-solid fa-camera"></i> Take Photo
+                    </button>
+                </div>
+                <div id="photoGrid" class="photoGrid"></div>
+                <button id="sendPhotosEmailBtn" class="sendPhotosBtn" style="display: none;">
+                    <i class="fa-regular fa-envelope"></i> Send Photos via Email
+                </button>
+            </div>
+
+            <!-- Job Info (view mode) -->
+            <div id="jobDetailView" class="detailCard">
+                <div class="detailRow">
+                    <span class="detailLabel">Job Name</span>
+                    <span class="detailValue" id="detailJobName"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Fault Description</span>
+                    <span class="detailValue" id="detailFault"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Address</span>
+                    <span class="detailValue" id="detailAddress"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Client</span>
+                    <span class="detailValue" id="detailClientName"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Contact Phone</span>
+                    <span class="detailValue" id="detailPhone"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Start Date</span>
+                    <span class="detailValue" id="detailStartDate"></span>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Stock</span>
+                    <div class="detailValue" id="detailStock">
+                        <div id="stockChipsView" class="stockChips"></div>
+                        <button class="addStockInlineBtn" id="addStockInlineBtn">
+                            <i class="fa-solid fa-plus"></i> Add Stock
+                        </button>
+                        <div id="addStockInlineForm" class="addStockInlineForm" style="display:none;">
+                            <input placeholder="Item name..." class="newJobInput" id="newStockItemInput" />
+                            <button class="stockAddBtn" id="addStockInlineConfirmBtn">
+                                <i class="fa-solid fa-check"></i> Add
+                            </button>
+                            <button class="stockAddBtn cancelBtn" id="cancelAddStockBtn">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="detailRow">
+                    <span class="detailLabel">Status</span>
+                    <span class="detailValue" id="detailStatus"></span>
+                </div>
+            </div>
+
+            <!-- Job Info (edit mode) -->
+            <div id="jobDetailEdit" class="detailCard" style="display:none;">
+                <div class="formGroup">
+                    <label class="formHeader">Job Name</label>
+                    <input class="newJobInput" id="editJobName" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Fault Description</label>
+                    <input class="newJobInput" id="editFault" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Client Name</label>
+                    <input class="newJobInput" id="editClientName" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Address</label>
+                    <input class="newJobInput" id="editAddress" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Contact Phone</label>
+                    <input class="newJobInput" id="editPhone" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Start Date</label>
+                    <input type="date" class="newJobInput" id="editStartDate" />
+                </div>
+                <div class="formGroup">
+                    <label class="formHeader">Stock / Materials Needed</label>
+                    <div id="editStockContainer" class="stockInputContainer">
+                        <div id="stockChipsEdit" class="stockChips"></div>
+                        <div class="stockInputRow">
+                            <input placeholder="Add item..." class="newJobInput" id="editStockItemInput" />
+                            <button type="button" class="stockAddBtn" id="editAddStockItemBtn">
+                                <i class="fa-solid fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button class="formButton" id="saveEditButton">
+                    <i class="fa-solid fa-check"></i> Save Changes
+                </button>
+            </div>
+
+            <!-- Time Logs -->
+            <div id="timeLogsSection" class="detailCard">
+                <p class="sectionSubTitle">Time & Travel Logs</p>
+                <div id="timeLogsContainer"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <button class="formButton" id="completeJobButton">
+                <i class="fa-solid fa-flag-checkered"></i> Complete Job
+            </button>
+            <button class="formButton" id="uncompleteJobButton" style="display:none;">
+                <i class="fa-solid fa-rotate-left"></i> Mark as Active
+            </button>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+
+    <!-- Auto-Update System: Detect new service worker & notify user -->
+    <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;font-size:14px;margin:0;position:sticky;top:0;z-index:9999;">
+        <span>New version available!</span>
+        <button id="reloadBtn" style="background:#fff;color:#ea580c;border:none;padding:5px 12px;margin-left:8px;border-radius:3px;font-weight:bold">Reload</button>
+    </div>
+
+    <script src="/Job-Tracker/update-check.js"></script>
+</body>
+</html>
