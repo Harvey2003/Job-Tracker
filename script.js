@@ -495,24 +495,70 @@ async function loadTimeLogs(jobId) {
         .eq("job_id", jobId)
         .order("clocked_in_at", { ascending: false });
     if (error || !data || !data.length) {
-        timeLogsContainer.innerHTML = '<p class="emptyState">No time records yet.</p>';
+        timeLogsContainer.innerHTML = '<div class="timeLogCard empty-card"><span class="type-icon">📋</span><p>No time records found.</p></div>';
         return;
     }
     timeLogsContainer.innerHTML = data.map(log => {
         const inTime = new Date(log.clocked_in_at);
         const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
-        const prefix = log.is_travel ? "🚗 Travel - " : "";
+        
+        // Determine active/completed status from data fields
+        const isActive = !outTime && !log.clocked_out_at;
+        const isTravelLog = !!log.is_travel;
+        
         let duration = log.duration_seconds;
-        if (!outTime && !log.clocked_out_at && log.is_travel && activeTravelLog && activeTravelLog.id === log.id) {
-            // currently active travel – compute live duration
+        if (isActive && isTravelLog && activeTravelLog && activeTravelLog.id === log.id) {
+            // currently active travel → compute live duration
+            duration = Math.floor((new Date() - inTime) / 1000);
+        } else if (isActive && !isTravelLog && activeWorkSession && activeWorkSession.id === log.id) {
+            // potentially also an active work session
             duration = Math.floor((new Date() - inTime) / 1000);
         }
-        return `<div class="timeLogRow">
-            <div><b>${prefix}${escapeHtml(log.user_name)}</b><br><small>${inTime.toLocaleDateString()}</small></div>
-            <div>${inTime.toLocaleTimeString()} → ${outTime ? outTime.toLocaleTimeString() : "—"}</div>
-            <div>${formatDuration(duration)}</div>
+        
+        // Build badge text & CSS class from data fields
+        let statusText, badgeClass;
+        if (isActive && isTravelLog) {
+            statusText = 'Traveling';
+            badgeClass = 'badge-traveling';    // Orange – currently traveling
+        } else if (isActive) {
+            statusText = 'Clocked In';
+            badgeClass = 'badge-clocked-in';   // Green – currently working
+        } else if (isTravelLog && outTime) {
+            statusText = 'Travel Done';
+            badgeClass = 'badge-travel-done';  // Amber – completed travel entry
+        } else {
+            statusText = 'Shift Complete';
+            badgeClass = 'badge-complete';     // Blue/Indigo – completed shift
+        }
+        
+        return `<div class="timeLogCard ${isTravelLog ? 'travel' : 'shift'}">
+            <div class="card-header">
+                <div class="user-info-badge">
+                    <span class="type-icon" title="${isTravelLog ? 'Travel Entry' : 'Shift Entry'}">${isTravelLog ? '🚗' : '⏱'}</span>
+                    <div>
+                        <b>${escapeHtml(log.user_name)}</b><br>
+                        <small>${inTime.toLocaleDateString()}</small>
+                    </div>
+                </div>
+                <span class="badge ${badgeClass}">${statusText}</span>
+            </div>
+            <div class="card-times">
+                <div class="time-col">
+                    <small>In</small><br>
+                    <b>${inTime.toLocaleTimeString()}</b>
+                </div>
+                <span class="separator">→</span>
+                <div class="time-col">
+                    <small>Out</small><br>
+                    <b>${outTime ? outTime.toLocaleTimeString() : '<span class="pending">—</span>'}</b>
+                </div>
+            </div>
+            <div class="card-duration">
+                <span class="duration-value">${formatDuration(duration)}</span>
+                <span class="duration-label">Total Duration</span>
+            </div>
         </div>`;
-    }).join('');
+    }).join('\n');
 }
 
 // === STOCK INLINE ADD ===
