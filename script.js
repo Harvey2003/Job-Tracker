@@ -820,14 +820,15 @@ async function registerSW() {
 const manualUpdateBtn = document.getElementById('manual-update-btn');
 if (manualUpdateBtn) {
     manualUpdateBtn.addEventListener('click', async () => {
-        // Optional: try to clear caches via service worker (doesn't block the reload)
+        // Unregister all service workers
         if ('serviceWorker' in navigator) {
-            const registration = await navigator.serviceWorker.ready;
-            if (registration.active) {
-                registration.active.postMessage({ type: 'PURGE_ALL_CACHE' });
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+                await registration.unregister();
+                console.log('Service worker unregistered');
             }
         }
-        // Force a hard reload from the network (ignores all cached files)
+        // Force a hard reload (bypass HTTP cache, and no SW to intercept)
         window.location.reload(true);
     });
 }
