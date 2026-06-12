@@ -1,3 +1,6 @@
+// ====== START UP ===================================================
+// ===================================================================
+
 // === SUPABASE INIT ===
 const SUPABASE_URL = "https://dbiilqwpdzilpdqzetyx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_qbZRx_7dX4dg8niBS0TedA_grY5M0su";
@@ -5,7 +8,7 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // === EMAILJS INIT ===
-emailjs.init("ASqDA9Nflas4yZppr");  // REPLACE WITH YOUR PUBLIC KEY
+emailjs.init("ASqDA9Nflas4yZppr");
 
 // === HELPER: format duration ===
 function formatDuration(sec) {
@@ -69,6 +72,7 @@ let newJobStock = [];
 let editJobStock = [];
 let detailStockArray = [];
 
+
 // === LOCAL STORAGE HELPERS ===
 function cacheJob(job) {
     try { localStorage.setItem(`job_${job.id}`, JSON.stringify(job)); } catch(e) {}
@@ -86,6 +90,7 @@ function getCachedAllJobs() {
         return ids.map(id => getCachedJob(id)).filter(Boolean);
     } catch(e) { return []; }
 }
+
 
 // === STOCK HELPERS ===
 function parseStockArray(str) {
@@ -115,6 +120,7 @@ function renderStockChips(containerId, arr, removeFn) {
         });
     }
 }
+
 
 // === AUTH ===
 db.auth.onAuthStateChange((event, session) => {
@@ -148,6 +154,7 @@ loginButton.onclick = async () => {
 loginPassword.addEventListener("keydown", e => { if (e.key === "Enter") loginButton.click(); });
 logoutButton.onclick = async () => { await db.auth.signOut(); closeNav(); };
 
+
 // === NAV ===
 function closeNav() { navBar.classList.remove("open"); navOverlay.classList.remove("active"); }
 openCloseNav.onclick = () => { navBar.classList.toggle("open"); navOverlay.classList.toggle("active"); };
@@ -155,55 +162,6 @@ navOverlay.onclick = closeNav;
 jobsSection.onclick = () => { closeNav(); closeJobDetail(); };
 createJobSection.onclick = () => { closeNav(); openForm(); };
 
-// === CREATE JOB FORM ===
-function openForm() {
-    newJobForm.classList.add("active");
-    newJobStock = [];
-    renderStockChips('stockChipsCreate', newJobStock, i => newJobStock.splice(i,1) && renderStockChips('stockChipsCreate', newJobStock, () => {}));
-    document.getElementById('inputStockItem').value = '';
-}
-function closeForm() { newJobForm.classList.remove("active"); }
-addJob.onclick = openForm;
-formClose.onclick = closeForm;
-newJobForm.onclick = e => { if (e.target === newJobForm) closeForm(); };
-document.getElementById('addStockItemBtn').onclick = () => {
-    const inp = document.getElementById('inputStockItem');
-    const item = inp.value.trim();
-    if (item) { newJobStock.push(item); inp.value = ''; renderStockChips('stockChipsCreate', newJobStock, i => newJobStock.splice(i,1)); }
-};
-document.getElementById('inputStockItem').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addStockItemBtn').click(); } });
-newJobButton.onclick = async () => {
-    const jobName = document.getElementById("inputJobName").value.trim();
-    if (!jobName) { alert("Please enter a job name."); return; }
-    newJobButton.disabled = true;
-    newJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Saving...';
-    const { data, error } = await db.from("Jobs").insert([{
-        job_name: jobName,
-        address: document.getElementById("inputAddress").value.trim(),
-        client_name: document.getElementById("inputClientName").value.trim(),
-        start_date: document.getElementById("startDate").value || null,
-        stock: newJobStock.join(', '),
-        fault_desc: document.getElementById("inputFault").value.trim(),
-        status: "active",
-        phone: document.getElementById("inputPhone").value.trim()
-    }]).select().single();
-    newJobButton.disabled = false;
-    newJobButton.innerHTML = '<i class="fa-solid fa-check"></i> Create Job';
-    if (error) { alert("Failed to save job."); return; }
-    const jobs = getCachedAllJobs();
-    jobs.unshift(data);
-    cacheAllJobs(jobs);
-    renderJobList(jobs);
-    document.getElementById("inputJobName").value = "";
-    document.getElementById("inputAddress").value = "";
-    document.getElementById("inputClientName").value = "";
-    document.getElementById("startDate").value = "";
-    document.getElementById("inputFault").value = "";
-    document.getElementById("inputPhone").value = "";
-    newJobStock = [];
-    renderStockChips('stockChipsCreate', [], null);
-    closeForm();
-};
 
 // === JOB LIST ===
 searchInput.oninput = (e) => {
@@ -279,7 +237,8 @@ function buildJobCard(job) {
     return card;
 }
 
-// === TRAVEL & CLOCK LOGIC (with persistence) ===
+
+// === TRAVEL & CLOCK LOGIC ===
 async function fetchActiveTravelLog(jobId) {
     const { data } = await db.from("time_logs")
         .select("*")
@@ -319,7 +278,6 @@ travelToggleBtn.addEventListener("click", async () => {
     travelToggleBtn.disabled = true;
     try {
         if (activeTravelLog) {
-            // Stop travel
             const now = new Date();
             const duration = Math.floor((now - new Date(activeTravelLog.clocked_in_at)) / 1000);
             await db.from("time_logs").update({
@@ -330,7 +288,6 @@ travelToggleBtn.addEventListener("click", async () => {
             await loadTimeLogs(currentJob.id);
             await updateTravelUI();
         } else {
-            // Start travel – ensure no active work session
             if (activeWorkSession) {
                 alert("Please clock out before starting travel.");
                 return;
@@ -359,7 +316,6 @@ travelToggleBtn.addEventListener("click", async () => {
 });
 
 async function handleClockIn() {
-    // If travel is active, stop it first (auto travel off)
     if (activeTravelLog) {
         const now = new Date();
         const duration = Math.floor((now - new Date(activeTravelLog.clocked_in_at)) / 1000);
@@ -429,6 +385,7 @@ clockButton.addEventListener("click", async () => {
     finally { clockButton.disabled = false; }
 });
 
+
 // === JOB DETAIL ===
 async function openJobDetail(jobId) {
     jobDetail.classList.add("active");
@@ -443,17 +400,16 @@ async function openJobDetail(jobId) {
     cacheJob(data);
     populateDetailView(data);
 
-    // Load active sessions from DB
     activeTravelLog = await fetchActiveTravelLog(jobId);
     activeWorkSession = await fetchActiveWorkSession(jobId);
     await updateTravelUI();
     updateClockUI();
     loadTimeLogs(jobId);
 
-    // Reset photos
     capturedPhotos = [];
     renderPhotoGrid();
 }
+
 function closeJobDetail() {
     jobDetail.classList.remove("active");
     currentJob = null;
@@ -515,6 +471,7 @@ async function loadTimeLogs(jobId) {
     }).join('');
 }
 
+
 // === STOCK INLINE ADD ===
 document.getElementById('addStockInlineBtn').onclick = () => {
     document.getElementById('addStockInlineForm').style.display = 'flex';
@@ -537,6 +494,7 @@ document.getElementById('addStockInlineConfirmBtn').onclick = async () => {
     document.getElementById('addStockInlineForm').style.display = 'none';
     document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
 };
+
 
 // === EDIT JOB ===
 jobDetailEditToggle.onclick = () => {
@@ -584,6 +542,7 @@ saveEditButton.onclick = async () => {
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 };
 
+
 // === COMPLETE JOB (EMAIL FIRST, THEN COMPLETE) ===
 completeJobButton.addEventListener("click", async () => {
     if (!confirm("Mark this job as complete? A summary email will be sent first.")) return;
@@ -605,7 +564,6 @@ completeJobButton.addEventListener("click", async () => {
         await loadTimeLogs(currentJob.id);
     }
 
-    // Fetch latest time logs for email
     const { data: logs } = await db.from("time_logs")
         .select("*")
         .eq("job_id", currentJob.id)
@@ -613,7 +571,6 @@ completeJobButton.addEventListener("click", async () => {
     const totalSeconds = logs?.reduce((sum, log) => sum + (log.duration_seconds || 0), 0) || 0;
     const totalHours = (totalSeconds / 3600).toFixed(2);
 
-    // Build email HTML table
     const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-NZ", { day:"numeric", month:"short" }) : "—";
     const fmtTime = (d) => new Date(d).toLocaleTimeString("en-NZ", { hour:"2-digit", minute:"2-digit" });
     const fmtDur = (s) => formatDuration(s);
@@ -673,6 +630,7 @@ completeJobButton.addEventListener("click", async () => {
     }
 });
 
+
 // === UNCOMPLETE JOB ===
 uncompleteJobButton.addEventListener("click", async () => {
     if (!confirm("Mark this job as active again?")) return;
@@ -681,7 +639,8 @@ uncompleteJobButton.addEventListener("click", async () => {
     closeJobDetail();
 });
 
-// === PHOTOS (send via email client) ===
+
+// === PHOTOS ===
 function renderPhotoGrid() {
     photoGrid.innerHTML = '';
     capturedPhotos.forEach((src, idx) => {
@@ -714,96 +673,40 @@ sendPhotosEmailBtn.addEventListener("click", () => {
     alert("Your email client will open. Please send the email manually.");
 });
 
-// === FORCE UPDATE FUNCTIONALITY ===
-const forceUpdateSection = document.getElementById('forceUpdateSection');
-let swRegistrationPromise = null;
 
-function registerSW() {
-    if ('serviceWorker' in navigator) {
-        return navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('SW registered:', reg.scope))
-            .catch(err => console.error('SW registration failed:', err));
-    }
-}
+// === SETTING UP UPDATES ===
 
-// Force update button click handler
-forceUpdateSection.addEventListener('click', async () => {
-    // Show progress bar and toast
-    document.getElementById('downloadProgressBarContainer')?.classList.add('show');
+setTimeout(() => window.location.reload(), 3000);
 
-    const progressBar = document.querySelector('#downloadProgressFill');
-    let width = 0;
-
-    try {
-        if ('serviceWorker' in navigator) {
-            const reg = await navigator.serviceWorker.ready;
-
-            // Clear all caches (app shell + dynamic content)
-            for (const cacheName of ['job-tracker-shell', 'dynamic-content']) {
-                await caches.delete(cacheName);
-            }
-
-            // Send skipWaiting message if SW is waiting
-            try {
-                reg.active?.postMessage({ type: 'SKIP_WAITING' });
-            } catch {}
-
-            // Unregister current SW to force fresh install from cache busting
-            await navigator.serviceWorker.unregister();
-
-            // Reload with cache-bust query string
-            const url = new URL(window.location.href);
-            url.searchParams.set('_cache_bust', Date.now().toString());
-            window.location.replace(url.toString());
-        } else {
-            throw new Error('Service Workers not supported');
-        }
-
-    } catch (err) {
-        console.error(err);
-    } finally {
-        // Hide progress bar after 2.5s animation completes
-        setTimeout(() => {
-            document.getElementById('downloadProgressBarContainer')?.classList.remove('show');
-            progressBar.style.width = '0%';
-        }, 3000);
-
-        // Show success toast (if no errors)
-        showToast('Cache cleared! Reloading...', '#f59e0b');
-    }
-});
-
-// Helper: Toast notification function
-function showToast(message, color = '#16a34a') {
-    const toast = document.createElement('div');
-    toast.className = 'toast-notification show';
-    toast.textContent = message;
-    toast.style.color = color;
-
-    // Insert after nav bar
-    const navBar = document.getElementById('navBar');
-    if (navBar) {
-        navBar.parentNode.insertBefore(toast, navBar.nextSibling);
-    } else {
-        document.body.appendChild(toast);
-    }
-}
-
-// === CACHE CLEAR INDICATOR ===
-function showCacheClearedBadge() {
-    const badge = document.createElement('div');
-    badge.id = 'cacheClearedBadge';
-    badge.className = 'show';
-    badge.textContent = '✓ Cache cleared! Reloading...';
-
-    // Insert after nav bar
-    const navBar = document.getElementById('navBar');
-    if (navBar) {
-        navBar.parentNode.insertBefore(badge, navBar.nextSibling);
-    } else {
-        document.body.appendChild(badge);
-    }
-}
-
-// Register SW on page load
-registerSW();
+// Register SW and listen for updates
+async function registerSW() {
+    if (!('serviceWorker' in navigator)) return;
+    
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    console.log('SW registered');
+  
+    // Listen for UPDATE_AVAILABLE messages
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'UPDATE_AVAILABLE') {
+        showUpdateBanner();
+      }
+    });
+  }
+  
+  // Show a simple refresh banner
+  function showUpdateBanner() {
+    if (document.getElementById('update-banner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'update-banner';
+    banner.innerHTML = `
+      <div style="position:fixed; bottom:16px; left:16px; right:16px; background:#007bff; color:#fff; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; z-index:9999;">
+        <span>🔄 New version ready</span>
+        <button id="reload-btn" style="background:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Refresh now</button>
+      </div>
+    `;
+    document.body.appendChild(banner);
+    document.getElementById('reload-btn').onclick = () => window.location.reload();
+  }
+  
+  // Start registration when page loads
+  registerSW();

@@ -733,34 +733,6 @@ textarea {
 #saveEditButton:active { background-color: #d97706; }
 
 /* === TIME LOGS === */
-/* #timeLogsSection {
-    background-color: #ffffff;
-    border-radius: 16px;
-    border: 1px solid #e5e7eb;
-    padding: 4vw 5vw;
-}
-.sectionSubTitle {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #9ca3af;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 2vw;
-}
-.timeLogRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 3vw 0;
-    border-bottom: 1px solid #f3f4f6;
-    gap: 2vw;
-    font-size: 0.75rem;
-}
-.timeLogRow:last-child { border-bottom: none; }
-.timeLogRow b { font-size: 0.82rem; }
-.timeLogRow small { color: #9ca3af; } */
-
-/* === TIME LOGS === */
 #timeLogsSection {
     background-color: #ffffff;
     border-radius: 16px;
@@ -858,42 +830,3 @@ textarea {
 }
 .toast-notification.show { display: block; animation: slideInRight 0.3s ease forwards; }
 @keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
-
-/* === CACHE CLEAR INDICATOR (optional visual cue) === */
-#cacheClearedBadge {
-    display: none;
-    position: fixed;
-    top: 64px; left: 5vw;
-    background-color: #1f2937;
-    color: #ffffff;
-    padding: 1.5vw 3vw;
-    border-radius: 8px;
-    font-size: 0.7rem;
-    z-index: 9996;
-}
-#cacheClearedBadge.show { display: block; animation: slideInLeft 0.3s ease forwards; }
-@keyframes slideInLeft { from { opacity: 0; transform: translateX(-100%); } to { opacity: 1; transform: translateX(0); } }
-
-/* === FORCE UPDATE CONFIRMATION MODAL (optional) === */
-#forceUpdateConfirmModal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0,0,0,0.6);
-    z-index: 10000;
-    align-items: center;
-    justify-content: center;
-}
-#forceUpdateConfirmModal.show { display: flex; }
-.force-update-modal-card {
-    background-color: #ffffff;
-    border-radius: 24px;
-    padding: 6vw;
-    max-width: 90%;
-    width: 380px;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
-}
-.force-update-modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 1vw; color: #1f2937; }
-.force-update-modal-body { font-size: 0.8rem; line-height: 1.6; color: #4b5563; margin-bottom: 2.5vw; min-height: 10em; }
-.force-update-warning-icon { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background-color: #fef3c7; border-radius: 50%; margin-bottom: 2vw; color: #d97706; font-size: 1.2rem; }
-.force-update-modal-actions { display: flex; gap: 1.5vw; justify-content: center; }
