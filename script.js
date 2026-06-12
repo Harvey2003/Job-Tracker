@@ -801,7 +801,7 @@ sendPhotosEmailBtn.addEventListener("click", () => {
 
 // Register SW and listen for update messages
 
-setTimeout(() => window.location.reload(), 30000);
+// setTimeout(() => window.location.reload(), 30000);
 
 async function registerSW() {
     if (!('serviceWorker' in navigator)) return;
@@ -817,40 +817,18 @@ async function registerSW() {
     });
 }
 
-// Show a banner when a new version is ready in the background
-function showUpdateBanner() {
-    if (document.getElementById('update-banner')) return;
-    const banner = document.createElement('div');
-    banner.id = 'update-banner';
-    banner.innerHTML = `
-        <div style="position:fixed; bottom:16px; left:16px; right:16px; background:#007bff; color:#fff; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; z-index:9999;">
-            <span>🔄 New version ready</span>
-            <button id="reload-btn" style="background:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Refresh now</button>
-        </div>
-    `;
-    document.body.appendChild(banner);
-    document.getElementById('reload-btn').onclick = () => window.location.reload();
-}
-
 const manualUpdateBtn = document.getElementById('manual-update-btn');
 if (manualUpdateBtn) {
     manualUpdateBtn.addEventListener('click', async () => {
-        if (!('serviceWorker' in navigator)) {
-            window.location.reload(true);
-            return;
+        // Optional: try to clear caches via service worker (doesn't block the reload)
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+            if (registration.active) {
+                registration.active.postMessage({ type: 'PURGE_ALL_CACHE' });
+            }
         }
-        
-        const registration = await navigator.serviceWorker.ready;
-        if (registration.active) {
-            // Tell the service worker to delete all caches
-            registration.active.postMessage({ type: 'PURGE_ALL_CACHE' });
-            // Fallback: force a reload after 1 second in case the SW fails to navigate
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        } else {
-            window.location.reload(true);
-        }
+        // Force a hard reload from the network (ignores all cached files)
+        window.location.reload(true);
     });
 }
 
