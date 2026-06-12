@@ -505,7 +505,6 @@ async function loadTimeLogs(jobId) {
     
     timeLogsContainer.innerHTML = '<p class="emptyState">Loading...</p>';
     
-    // Remove any existing pagination controls before re-adding
     const oldPagination = document.querySelector(".pagination-controls");
     if (oldPagination) oldPagination.remove();
     
@@ -539,14 +538,12 @@ function renderTimeLogsPage() {
     const endIdx = startIdx + logsPerPage;
     const pageLogs = allTimeLogs.slice(startIdx, endIdx);
     
-    // Build HTML for logs
     const logsHtml = pageLogs.map(log => {
         const inTime = new Date(log.clocked_in_at);
         const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
         const prefix = log.is_travel ? "🚗 Travel · " : "⏱️ Work · ";
         let duration = log.duration_seconds;
         
-        // Live duration for active travel log (global activeTravelLog assumed)
         if (!outTime && !log.clocked_out_at && log.is_travel && window.activeTravelLog && window.activeTravelLog.id === log.id) {
             duration = Math.floor((new Date() - inTime) / 1000);
         }
@@ -565,7 +562,6 @@ function renderTimeLogsPage() {
         </div>`;
     }).join('');
     
-    // Pagination controls
     const totalPages = Math.ceil(allTimeLogs.length / logsPerPage);
     const paginationHtml = `
         <div class="pagination-controls">
@@ -581,7 +577,6 @@ function renderTimeLogsPage() {
     
     timeLogsContainer.innerHTML = logsHtml + paginationHtml;
     
-    // Attach event listeners to the new buttons
     const prevBtn = timeLogsContainer.querySelector(".prev-page");
     const nextBtn = timeLogsContainer.querySelector(".next-page");
     if (prevBtn && !prevBtn.disabled) {
@@ -678,11 +673,9 @@ saveEditButton.onclick = async () => {
 completeJobButton.addEventListener("click", async () => {
     if (!confirm("Mark this job as complete? A summary email will be sent first.")) return;
 
-    // Clock out if work session active
     if (activeWorkSession) {
         await handleClockOut();
     }
-    // Stop travel if active
     if (activeTravelLog) {
         const now = new Date();
         const duration = Math.floor((now - new Date(activeTravelLog.clocked_in_at)) / 1000);
@@ -744,7 +737,6 @@ completeJobButton.addEventListener("click", async () => {
             templateParams
         );
         if (response.status === 200) {
-            // Email sent – now mark job as completed
             await db.from("Jobs").update({ status: "completed" }).eq("id", currentJob.id);
             alert('✅ Job completed and summary email sent.');
             loadJobs();
@@ -805,55 +797,62 @@ sendPhotosEmailBtn.addEventListener("click", () => {
 });
 
 
-// === SETTING UP UPDATES ===
+// ==================== SERVICE WORKER & UPDATES ====================
 
-setTimeout(() => window.location.reload(), 30000);
-
-// Register SW and listen for updates
+// Register SW and listen for update messages
 async function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     
     const registration = await navigator.serviceWorker.register('/sw.js');
     console.log('SW registered');
-  
-    // Listen for UPDATE_AVAILABLE messages
+    
+    // Listen for messages from the service worker (e.g., UPDATE_AVAILABLE)
     navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data?.type === 'UPDATE_AVAILABLE') {
-        showUpdateBanner();
-      }
+        if (event.data?.type === 'UPDATE_AVAILABLE') {
+            showUpdateBanner();
+        }
     });
-  }
-  
-  function showUpdateBanner() {
+}
+
+// Show a banner when a new version is ready in the background
+function showUpdateBanner() {
     if (document.getElementById('update-banner')) return;
     const banner = document.createElement('div');
     banner.id = 'update-banner';
     banner.innerHTML = `
-      <div style="position:fixed; bottom:16px; left:16px; right:16px; background:#007bff; color:#fff; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; z-index:9999;">
-        <span>🔄 New version ready</span>
-        <button id="reload-btn" style="background:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Refresh now</button>
-      </div>
+        <div style="position:fixed; bottom:16px; left:16px; right:16px; background:#007bff; color:#fff; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; z-index:9999;">
+            <span>🔄 New version ready</span>
+            <button id="reload-btn" style="background:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Refresh now</button>
+        </div>
     `;
     document.body.appendChild(banner);
     document.getElementById('reload-btn').onclick = () => window.location.reload();
-  }
+}
 
-  document.getElementById('manual-update-btn').addEventListener('click', async () => {
-    if (!('serviceWorker' in navigator)) {
-      // Fallback: hard reload if no SW support
-      window.location.reload(true);
-      return;
-    }
-  
-    const registration = await navigator.serviceWorker.ready;
-    if (registration.active) {
-      // Send message to the active service worker
-      registration.active.postMessage({ type: 'PURGE_ALL_CACHE' });
-      // Optional: show a toast "Updating, please wait..."
-    } else {
-      window.location.reload(true);
-    }
-  });
-  
-  // Start registration when page loads
-  registerSW();
+const manualUpdateBtn = document.getElementById('manual-update-btn');
+if (manualUpdateBtn) {
+    manualUpdateBtn.addEventListener('click', async () => {
+        if (!('serviceWorker' in navigator)) {
+            window.location.reload(true);
+            return;
+        }
+        
+        const registration = await navigator.serviceWorker.ready;
+        if (registration.active) {
+            // Tell the service worker to delete all caches
+            registration.active.postMessage({ type: 'PURGE_ALL_CACHE' });
+            // Fallback: force a reload after 1 second in case the SW fails to navigate
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            window.location.reload(true);
+        }
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', registerSW);
+} else {
+    registerSW();
+}
