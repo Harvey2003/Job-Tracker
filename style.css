@@ -749,41 +749,126 @@ textarea {
 }
 #saveEditButton:active { background-color: #d97706; }
 
-/* === TIME LOGS === */
+/* === TIME LOGS – MODERN STYLES (Updated) === */
 #timeLogsSection {
     background-color: #ffffff;
-    border-radius: 16px;
-    border: 1px solid #e5e7eb;
-    padding: 4vw 5vw;
+    border-radius: 20px;
+    border: 1px solid #eef2f6;
+    padding: 1.25rem;
+    margin: 1rem 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }
+
 .sectionSubTitle {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #9ca3af;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #6c7a91;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 2vw;
+    letter-spacing: 0.06em;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1.5px solid #eef2f6;
 }
+
+/* each log entry as a distinct card */
 .timeLogRow {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 3vw 0;
-    border-bottom: 1px solid #f3f4f6;
-    gap: 2vw;
+    gap: 0.75rem;
+    padding: 0.9rem 0.75rem;
+    margin: 0.5rem 0;
+    background: #fafcff;
+    border-radius: 14px;
+    border: 1px solid #eef2f6;
+    transition: all 0.15s ease;
+    font-size: 0.8rem;
+}
+
+.timeLogRow:hover {
+    background: #ffffff;
+    border-color: #dce3ec;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.timeLogRow b {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e2a3e;
+    display: inline-block;
+    margin-bottom: 0.2rem;
+}
+
+.timeLogRow small {
+    color: #7e8b9f;
+    font-size: 0.7rem;
+}
+
+.timeLogRow > div:first-child {
+    flex: 2;
+    min-width: 110px;
+}
+
+.timeLogRow > div:nth-child(2) {
+    flex: 1.5;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.timeLogRow > div:last-child {
+    flex: 0.8;
+    text-align: right;
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: #2c6e9e;
+    background: #eef4ff;
+    padding: 0.2rem 0.5rem;
+    border-radius: 20px;
     font-size: 0.75rem;
 }
-.timeLogRow:last-child { border-bottom: none; }
-.timeLogRow b { font-size: 0.82rem; }
-.timeLogRow small { color: #9ca3af; }
 
-/* === ACTION BUTTONS === */
-#completeJobButton {
-    background-color: #16a34a !important;
-    color: #ffffff;
+/* pagination controls – NEW */
+.pagination-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #eef2f6;
 }
-#completeJobButton:active { background-color: #15803d !important; }
-#uncompleteJobButton {
-    background-color: #6b7280 !important;
+
+.pagination-btn {
+    background: #f8fafd;
+    border: 1px solid #e2e8f0;
+    border-radius: 40px;
+    padding: 0.4rem 1rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #2c6e9e;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pagination-btn:active {
+    transform: scale(0.96);
+    background: #eef4ff;
+}
+
+.pagination-btn.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.page-indicator {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #5a6e8a;
+    background: #f1f5f9;
+    padding: 0.25rem 0.8rem;
+    border-radius: 30px;
 }
 

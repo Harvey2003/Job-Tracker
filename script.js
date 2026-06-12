@@ -72,6 +72,11 @@ let newJobStock = [];
 let editJobStock = [];
 let detailStockArray = [];
 
+// Global variables for pagination 
+let allTimeLogs = [];
+let currentLogsPage = 1;
+const logsPerPage = 5;
+
 
 // === LOCAL STORAGE HELPERS ===
 function cacheJob(job) {
@@ -445,30 +450,106 @@ function populateDetailView(job) {
 }
 
 async function loadTimeLogs(jobId) {
+    const timeLogsContainer = document.getElementById("timeLogsContainer");
+    if (!timeLogsContainer) return;
+    
     timeLogsContainer.innerHTML = '<p class="emptyState">Loading...</p>';
+    
+    // Remove any existing pagination controls before re-adding
+    const oldPagination = document.querySelector(".pagination-controls");
+    if (oldPagination) oldPagination.remove();
+    
     const { data, error } = await db.from("time_logs")
         .select("*")
         .eq("job_id", jobId)
         .order("clocked_in_at", { ascending: false });
+    
     if (error || !data || !data.length) {
+        timeLogsContainer.innerHTML = '<p class="emptyState">No time records yet.</p>';
+        allTimeLogs = [];
+        currentLogsPage = 1;
+        return;
+    }
+    
+    allTimeLogs = data;
+    currentLogsPage = 1;
+    renderTimeLogsPage();
+}
+
+function renderTimeLogsPage() {
+    const timeLogsContainer = document.getElementById("timeLogsContainer");
+    if (!timeLogsContainer) return;
+    
+    if (!allTimeLogs.length) {
         timeLogsContainer.innerHTML = '<p class="emptyState">No time records yet.</p>';
         return;
     }
-    timeLogsContainer.innerHTML = data.map(log => {
+    
+    const startIdx = (currentLogsPage - 1) * logsPerPage;
+    const endIdx = startIdx + logsPerPage;
+    const pageLogs = allTimeLogs.slice(startIdx, endIdx);
+    
+    // Build HTML for logs
+    const logsHtml = pageLogs.map(log => {
         const inTime = new Date(log.clocked_in_at);
         const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
-        const prefix = log.is_travel ? "🚗 Travel - " : "";
+        const prefix = log.is_travel ? "🚗 Travel · " : "⏱️ Work · ";
         let duration = log.duration_seconds;
-        if (!outTime && !log.clocked_out_at && log.is_travel && activeTravelLog && activeTravelLog.id === log.id) {
-            // currently active travel – compute live duration
+        
+        // Live duration for active travel log (global activeTravelLog assumed)
+        if (!outTime && !log.clocked_out_at && log.is_travel && window.activeTravelLog && window.activeTravelLog.id === log.id) {
             duration = Math.floor((new Date() - inTime) / 1000);
         }
+        
+        const formattedDuration = formatDuration(duration);
+        const dateStr = inTime.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const timeRange = `${inTime.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })} → ${outTime ? outTime.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' }) : "—"}`;
+        
         return `<div class="timeLogRow">
-            <div><b>${prefix}${escapeHtml(log.user_name)}</b><br><small>${inTime.toLocaleDateString()}</small></div>
-            <div>${inTime.toLocaleTimeString()} → ${outTime ? outTime.toLocaleTimeString() : "—"}</div>
-            <div>${formatDuration(duration)}</div>
+            <div>
+                <b>${escapeHtml(prefix)}${escapeHtml(log.user_name)}</b><br>
+                <small>${dateStr}</small>
+            </div>
+            <div>${timeRange}</div>
+            <div>${formattedDuration}</div>
         </div>`;
     }).join('');
+    
+    // Pagination controls
+    const totalPages = Math.ceil(allTimeLogs.length / logsPerPage);
+    const paginationHtml = `
+        <div class="pagination-controls">
+            <button class="pagination-btn prev-page" ${currentLogsPage === 1 ? 'disabled' : ''}>
+                <i class="fa-solid fa-chevron-left"></i> Previous
+            </button>
+            <span class="page-indicator">Page ${currentLogsPage} of ${totalPages}</span>
+            <button class="pagination-btn next-page" ${currentLogsPage === totalPages ? 'disabled' : ''}>
+                Next <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+    `;
+    
+    timeLogsContainer.innerHTML = logsHtml + paginationHtml;
+    
+    // Attach event listeners to the new buttons
+    const prevBtn = timeLogsContainer.querySelector(".prev-page");
+    const nextBtn = timeLogsContainer.querySelector(".next-page");
+    if (prevBtn && !prevBtn.disabled) {
+        prevBtn.addEventListener("click", () => {
+            if (currentLogsPage > 1) {
+                currentLogsPage--;
+                renderTimeLogsPage();
+            }
+        });
+    }
+    if (nextBtn && !nextBtn.disabled) {
+        nextBtn.addEventListener("click", () => {
+            if (currentLogsPage < totalPages) {
+                currentLogsPage++;
+                renderTimeLogsPage();
+            }
+        });
+    }
 }
 
 
