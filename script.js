@@ -775,6 +775,7 @@ function renderPhotoGrid() {
     });
     sendPhotosEmailBtn.style.display = capturedPhotos.length ? "inline-flex" : "none";
 }
+
 takePhotoBtn.addEventListener("click", () => {
     if (capturedPhotos.length >= 3) { alert("Maximum 3 photos."); return; }
     const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
@@ -788,12 +789,32 @@ takePhotoBtn.addEventListener("click", () => {
     };
     input.click();
 });
-sendPhotosEmailBtn.addEventListener("click", () => {
+
+sendPhotosEmailBtn.addEventListener("click", async () => {
     if (!capturedPhotos.length) return;
-    const subject = `${currentJob.client_name || 'Job'} - ${currentJob.address || 'No address'}`;
-    const body = `Job: ${currentJob.job_name}\nClient: ${currentJob.client_name}\nAddress: ${currentJob.address}\n\nPhotos attached as data URLs (copy to view):\n${capturedPhotos.join('\n\n')}`;
-    window.location.href = `mailto:ashleywork02@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    alert("Your email client will open. Please send the email manually.");
+
+    const files = await Promise.all(capturedPhotos.map(async (dataUrl, idx) => {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        return new File([blob], `job_photo_${idx + 1}.jpg`, { type: blob.type });
+    }));
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
+        try {
+            await navigator.share({
+                title: "Job Photos",
+                text: `Job: ${currentJob.job_name}\nClient: ${currentJob.client_name}\nAddress: ${currentJob.address}`,
+                files: files
+            });
+        } catch (err) {
+            if (err.name !== "AbortError") {
+                console.error("Share failed:", err);
+                alert("Sharing failed. Please try again.");
+            }
+        }
+    } else {
+        alert("Your browser does not support sharing images directly.\nPlease use a mobile device (Android/iOS) or update your browser.");
+    }
 });
 
 
@@ -809,7 +830,6 @@ async function registerSW() {
     const registration = await navigator.serviceWorker.register('/sw.js');
     console.log('SW registered');
     
-    // Listen for messages from the service worker (e.g., UPDATE_AVAILABLE)
     navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data?.type === 'UPDATE_AVAILABLE') {
             showUpdateBanner();
@@ -828,7 +848,6 @@ if (manualUpdateBtn) {
                 console.log('Service worker unregistered');
             }
         }
-        // Force a hard reload (bypass HTTP cache, and no SW to intercept)
         window.location.reload(true);
     });
 }
