@@ -802,7 +802,7 @@ sendPhotosEmailBtn.addEventListener("click", async () => {
     if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
         try {
             await navigator.share({
-                title: "${currentJob.job_name}",
+                title: `${currentJob.job_name}`,
                 text: `Job: ${currentJob.job_name}\nClient: ${currentJob.client_name}\nAddress: ${currentJob.address}`,
                 files: files
             });
