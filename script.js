@@ -693,7 +693,6 @@ async function registerSW() {
     });
   }
   
-  // Show a simple refresh banner
   function showUpdateBanner() {
     if (document.getElementById('update-banner')) return;
     const banner = document.createElement('div');
@@ -707,6 +706,23 @@ async function registerSW() {
     document.body.appendChild(banner);
     document.getElementById('reload-btn').onclick = () => window.location.reload();
   }
+
+  document.getElementById('manual-update-btn').addEventListener('click', async () => {
+    if (!('serviceWorker' in navigator)) {
+      // Fallback: hard reload if no SW support
+      window.location.reload(true);
+      return;
+    }
+  
+    const registration = await navigator.serviceWorker.ready;
+    if (registration.active) {
+      // Send message to the active service worker
+      registration.active.postMessage({ type: 'PURGE_ALL_CACHE' });
+      // Optional: show a toast "Updating, please wait..."
+    } else {
+      window.location.reload(true);
+    }
+  });
   
   // Start registration when page loads
   registerSW();
