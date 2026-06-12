@@ -676,7 +676,7 @@ sendPhotosEmailBtn.addEventListener("click", () => {
 
 // === SETTING UP UPDATES ===
 
-setTimeout(() => window.location.reload(), 3000);
+setTimeout(() => window.location.reload(), 30000);
 
 // Register SW and listen for updates
 async function registerSW() {
