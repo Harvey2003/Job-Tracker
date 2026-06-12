@@ -807,7 +807,8 @@ sendPhotosEmailBtn.addEventListener("click", () => {
 
 // === SETTING UP UPDATES ===
 
-setTimeout(() => window.location.reload(), 30000);
+setTimeout(() => window.location.reload(), 300000);
+let isUpdating = false;
 
 // Register SW and listen for updates
 async function registerSW() {
@@ -823,37 +824,79 @@ async function registerSW() {
       }
     });
   }
-  
-  function showUpdateBanner() {
-    if (document.getElementById('update-banner')) return;
-    const banner = document.createElement('div');
-    banner.id = 'update-banner';
-    banner.innerHTML = `
-      <div style="position:fixed; bottom:16px; left:16px; right:16px; background:#007bff; color:#fff; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; z-index:9999;">
-        <span>🔄 New version ready</span>
-        <button id="reload-btn" style="background:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Refresh now</button>
-      </div>
-    `;
-    document.body.appendChild(banner);
-    document.getElementById('reload-btn').onclick = () => window.location.reload();
-  }
 
-  document.getElementById('manual-update-btn').addEventListener('click', async () => {
-    if (!('serviceWorker' in navigator)) {
-      // Fallback: hard reload if no SW support
-      window.location.reload(true);
-      return;
+  document.addEventListener('DOMContentLoaded', () => {
+    const banner = document.getElementById('appBanner');
+    const btn = document.getElementById('reloadBtn');
+  
+    // Only initialize if an update was previously detected
+    if (new URLSearchParams(window.location.search).get("update") === "1") {
+      banner.style.display = 'block';
+      showProgressBar();
     }
   
-    const registration = await navigator.serviceWorker.ready;
-    if (registration.active) {
-      // Send message to the active service worker
-      registration.active.postMessage({ type: 'PURGE_ALL_CACHE' });
-      // Optional: show a toast "Updating, please wait..."
-    } else {
-      window.location.reload(true);
-    }
+    btn.onclick = () => {
+      isUpdating = true;
+      banner.style.display = 'block';
+      btn.disabled = true;
+      btn.textContent = "Updating...";
+      showProgressBar();
+    };
   });
+  
+  function showProgressBar() {
+    const banner = document.getElementById('appBanner');
+    // Remove old progress bar if exists
+    const oldBar = document.getElementById('updateProgressWrap');
+    if (oldBar) oldBar.remove();
+  
+    const wrap = document.createElement('div');
+    wrap.id = 'updateProgressWrap';
+    wrap.style.cssText = `width:100%; padding-top:8px;`;
+  
+    const statusTxt = document.createElement('span');
+    statusTxt.id = 'updateStatus';
+    statusTxt.style.cssText = `display:block;font-size:13px;margin-bottom:4px;color:#fff;`;
+  
+    const barWrap = document.createElement('div');
+    barWrap.style.cssText = `width:100%;height:6px;background:rgba(255,255,255,0.2);border-radius:3px;overflow:hidden;`;
+  
+    const fill = document.createElement('div');
+    fill.id = 'updateFill';
+    fill.style.cssText = `width:0%;height:100%;background:#fff;transition:width 0.4s ease;`;
+  
+    barWrap.appendChild(fill);
+    wrap.appendChild(statusTxt);
+    wrap.appendChild(barWrap);
+  
+    // Insert right after the banner container
+    document.body.insertBefore(wrap, banner.nextElementSibling || null);
+  
+    updateStatus("Checking for updates...");
+    fill.style.width = "15%";
+  
+    // Simulate realistic PWA update phases (replace with real SW listeners if preferred)
+    setTimeout(() => updateStatus("Downloading assets..."), 600);
+    fill.style.width = "45%";
+  
+    setTimeout(() => {
+      updateStatus("Installing & refreshing...");
+      fill.style.width = "85%";
+      navigator.serviceWorker.ready.then(reg => reg.update()).catch(() => {});
+  
+      setTimeout(() => {
+        fill.style.width = "100%";
+        updateStatus("Complete!");
+        // Force hard reload to bypass cache
+        setTimeout(() => window.location.reload(true), 800);
+      }, 700);
+    }, 1400);
+  }
+  
+  function updateStatus(text) {
+    const status = document.getElementById('updateStatus');
+    if (status) status.textContent = text;
+  }
   
   // Start registration when page loads
   registerSW();
