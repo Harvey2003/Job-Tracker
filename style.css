@@ -761,9 +761,42 @@ textarea {
 }
 .timeLogRow:last-child { border-bottom: none; }
 .timeLogRow b { font-size: 0.82rem; }
-.timeLogRow small { color: #9ca3af; }
+    /* Travel logs get a subtle highlight when shown */
+.timeLogRow[data-type="travel"] .fa-solid::before { content: "🚗 "; }
 
-/* === ACTION BUTTONS === */
+/* Filter checkboxes container */
+.filterTimeLogsContainer {
+    display: flex;
+    gap: 1.5vw;
+    margin-bottom: 2vw;
+}
+
+.filterCheckboxGroup {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 0.7rem;
+}
+
+/* Checkbox styling */
+[type="checkbox"] {
+    accent-color: #f59e0b;
+    width: 16px;
+    height: 16px;
+}
+
+.filterCheckboxLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+/* Travel checkbox gets a car icon */
+#filterTravelCheckbox:checked + .fa-solid::before { content: "🚗 "; }
+
+/* === ACTION BUTTONS === 
 #completeJobButton {
     background-color: #16a34a !important;
     color: #ffffff;

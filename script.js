@@ -515,6 +515,33 @@ async function loadTimeLogs(jobId) {
     }).join('');
 }
 
+// === FILTER TIME LOGS BY TYPE ===
+function filterTimeLogRows() {
+  const rows = document.querySelectorAll('.timeLogRow');
+  if (!rows.length) return;
+  
+  // If a type is selected, show only those (or hide all except matching)
+  for (const row of rows) {
+    const type = row.getAttribute('data-type') || 'all';
+    if (type === 'travel' && document.getElementById('filterTravelCheckbox').checked) {
+      row.style.display = ''; // Show travel logs when checkbox is checked
+    } else if (!document.getElementById('filterAllCheckbox').checked) {
+      row.style.display = 'none'; // Hide non-selected types
+    } else {
+      row.style.display = ''; // Show all (all checkbox selected or no filter active)
+    }
+  }
+}
+
+// === FILTER UI WIRING ===
+document.getElementById('filterAllCheckbox').onclick = () => {
+  document.querySelectorAll('.timeLogRow').forEach(row => {
+    if (!row.getAttribute('data-type')) row.style.display = ''; // Show all when "all" selected
+  });
+};
+
+document.getElementById('filterTravelCheckbox').checked && filterTimeLogRows();
+
 // === STOCK INLINE ADD ===
 document.getElementById('addStockInlineBtn').onclick = () => {
     document.getElementById('addStockInlineForm').style.display = 'flex';
