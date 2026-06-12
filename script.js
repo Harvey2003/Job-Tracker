@@ -800,6 +800,9 @@ sendPhotosEmailBtn.addEventListener("click", () => {
 // ==================== SERVICE WORKER & UPDATES ====================
 
 // Register SW and listen for update messages
+
+setTimeout(() => window.location.reload(), 30000);
+
 async function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     
