@@ -167,6 +167,56 @@ navOverlay.onclick = closeNav;
 jobsSection.onclick = () => { closeNav(); closeJobDetail(); };
 createJobSection.onclick = () => { closeNav(); openForm(); };
 
+// === CREATE JOB FORM ===
+function openForm() {
+    newJobForm.classList.add("active");
+    newJobStock = [];
+    renderStockChips('stockChipsCreate', newJobStock, i => newJobStock.splice(i,1) && renderStockChips('stockChipsCreate', newJobStock, () => {}));
+    document.getElementById('inputStockItem').value = '';
+}
+function closeForm() { newJobForm.classList.remove("active"); }
+addJob.onclick = openForm;
+formClose.onclick = closeForm;
+newJobForm.onclick = e => { if (e.target === newJobForm) closeForm(); };
+document.getElementById('addStockItemBtn').onclick = () => {
+    const inp = document.getElementById('inputStockItem');
+    const item = inp.value.trim();
+    if (item) { newJobStock.push(item); inp.value = ''; renderStockChips('stockChipsCreate', newJobStock, i => newJobStock.splice(i,1)); }
+};
+document.getElementById('inputStockItem').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addStockItemBtn').click(); } });
+newJobButton.onclick = async () => {
+    const jobName = document.getElementById("inputJobName").value.trim();
+    if (!jobName) { alert("Please enter a job name."); return; }
+    newJobButton.disabled = true;
+    newJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Saving...';
+    const { data, error } = await db.from("Jobs").insert([{
+        job_name: jobName,
+        address: document.getElementById("inputAddress").value.trim(),
+        client_name: document.getElementById("inputClientName").value.trim(),
+        start_date: document.getElementById("startDate").value || null,
+        stock: newJobStock.join(', '),
+        fault_desc: document.getElementById("inputFault").value.trim(),
+        status: "active",
+        phone: document.getElementById("inputPhone").value.trim()
+    }]).select().single();
+    newJobButton.disabled = false;
+    newJobButton.innerHTML = '<i class="fa-solid fa-check"></i> Create Job';
+    if (error) { alert("Failed to save job."); return; }
+    const jobs = getCachedAllJobs();
+    jobs.unshift(data);
+    cacheAllJobs(jobs);
+    renderJobList(jobs);
+    document.getElementById("inputJobName").value = "";
+    document.getElementById("inputAddress").value = "";
+    document.getElementById("inputClientName").value = "";
+    document.getElementById("startDate").value = "";
+    document.getElementById("inputFault").value = "";
+    document.getElementById("inputPhone").value = "";
+    newJobStock = [];
+    renderStockChips('stockChipsCreate', [], null);
+    closeForm();
+};
+
 
 // === JOB LIST ===
 searchInput.oninput = (e) => {
