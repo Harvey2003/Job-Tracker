@@ -614,7 +614,11 @@ textarea {
     font-size: 0.75rem;
     color: #9ca3af;
     text-align: center;
+<<<<<<< HEAD
     margin-top: -4px;
+=======
+    margin-top: 6px;
+>>>>>>> parent of b67fc0c (new time sheet)
 }
 .divider {
     height: 1px;
