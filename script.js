@@ -650,10 +650,9 @@ completeJobButton.addEventListener("click", async () => {
     completeJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Sending email...';
 
     try {
-        // *** REPLACE WITH YOUR EMAILJS SERVICE & TEMPLATE IDs ***
         const response = await emailjs.send(
-            "service_nlma6da",      // your service ID
-            "template_y2ineka",     // your template ID
+            "service_nlma6da",
+            "template_y2ineka",
             templateParams
         );
         if (response.status === 200) {
