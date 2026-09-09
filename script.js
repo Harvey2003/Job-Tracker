@@ -63,52 +63,20 @@ const sendPhotosEmailBtn  = document.getElementById("sendPhotosEmailBtn");
 // === STATE ===
 let currentJob        = null;
 let currentUser       = null;
-let activeWorkSession = null;
-let activeTravelLog   = null;
+let activeWorkSession = null;   // active work log (clocked in, is_travel=false)
+let activeTravelLog   = null;   // active travel log (is_travel=true, clocked_out_at=null)
 let capturedPhotos    = [];
 let currentSearchTerm = "";
-let selectedTab       = 'active'; // 'active', 'upcoming', 'completed'
+let groupCollapsedState = { active: false, upcoming: false, completed: false };
 let newJobStock = [];
 let editJobStock = [];
 let detailStockArray = [];
+
+// Global variables for pagination 
 let allTimeLogs = [];
 let currentLogsPage = 1;
 const logsPerPage = 5;
-let syncInProgress = false;
-const QUEUE_KEY = 'offline_queue';
 
-// === OFFLINE QUEUE HELPERS ===
-function getQueue() {
-    try { return JSON.parse(localStorage.getItem(QUEUE_KEY)) || []; } catch { return []; }
-}
-function saveQueue(queue) {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
-    updateSyncBadge();
-}
-function addToQueue(action) {
-    const queue = getQueue();
-    queue.push({ ...action, queuedAt: new Date().toISOString() });
-    saveQueue(queue);
-}
-function clearQueue() {
-    localStorage.removeItem(QUEUE_KEY);
-    updateSyncBadge();
-}
-
-function updateSyncBadge() {
-    const queue = getQueue();
-    const count = queue.length;
-    let badge = document.getElementById('syncBadge');
-    if (!badge) {
-        badge = document.createElement('span');
-        badge.id = 'syncBadge';
-        badge.style.cssText = 'background:#f59e0b;color:#111827;font-size:0.7rem;font-weight:700;padding:2px 10px;border-radius:20px;margin-left:8px;';
-        const welcome = document.getElementById('welcomeMessage');
-        if (welcome) welcome.appendChild(badge);
-    }
-    badge.textContent = count ? `${count} pending` : '';
-    badge.style.display = count ? 'inline-block' : 'none';
-}
 
 // === LOCAL STORAGE HELPERS ===
 function cacheJob(job) {
@@ -127,6 +95,7 @@ function getCachedAllJobs() {
         return ids.map(id => getCachedJob(id)).filter(Boolean);
     } catch(e) { return []; }
 }
+
 
 // === STOCK HELPERS ===
 function parseStockArray(str) {
@@ -157,42 +126,6 @@ function renderStockChips(containerId, arr, removeFn) {
     }
 }
 
-// === SYNC QUEUE PROCESSING ===
-async function processQueue() {
-    if (syncInProgress || !navigator.onLine) return;
-    const queue = getQueue();
-    if (!queue.length) return;
-    syncInProgress = true;
-    let remaining = [];
-    for (const item of queue) {
-        try {
-            if (item.type === 'create_job') {
-                const { data, error } = await db.from('Jobs').insert(item.data).select().single();
-                if (error) throw error;
-                const cached = getCachedAllJobs();
-                const idx = cached.findIndex(j => j.tempId === item.data.tempId);
-                if (idx !== -1) {
-                    cached[idx] = { ...data, tempId: undefined };
-                    cacheAllJobs(cached);
-                }
-            }
-        } catch (err) {
-            console.warn('Sync failed, will retry:', item, err);
-            remaining.push(item);
-        }
-    }
-    saveQueue(remaining);
-    syncInProgress = false;
-    if (remaining.length === 0) {
-        loadJobs();
-    }
-}
-
-window.addEventListener('online', () => { processQueue(); });
-window.addEventListener('load', () => {
-    processQueue();
-    setInterval(() => { if (navigator.onLine) processQueue(); }, 30000);
-});
 
 // === AUTH ===
 db.auth.onAuthStateChange((event, session) => {
@@ -211,7 +144,6 @@ function showApp(user) {
     const displayName = user.user_metadata?.display_name || user.email.split("@")[0];
     welcomeSub.textContent = displayName;
     loadJobs();
-    updateSyncBadge();
 }
 loginButton.onclick = async () => {
     const email = loginEmail.value.trim();
@@ -227,22 +159,13 @@ loginButton.onclick = async () => {
 loginPassword.addEventListener("keydown", e => { if (e.key === "Enter") loginButton.click(); });
 logoutButton.onclick = async () => { await db.auth.signOut(); closeNav(); };
 
+
 // === NAV ===
 function closeNav() { navBar.classList.remove("open"); navOverlay.classList.remove("active"); }
 openCloseNav.onclick = () => { navBar.classList.toggle("open"); navOverlay.classList.toggle("active"); };
 navOverlay.onclick = closeNav;
 jobsSection.onclick = () => { closeNav(); closeJobDetail(); };
 createJobSection.onclick = () => { closeNav(); openForm(); };
-
-// === TAB SWITCHING ===
-document.querySelectorAll('.tabPill').forEach(pill => {
-    pill.addEventListener('click', function() {
-        document.querySelectorAll('.tabPill').forEach(p => p.classList.remove('active'));
-        this.classList.add('active');
-        selectedTab = this.dataset.status;
-        renderJobList(getCachedAllJobs());
-    });
-});
 
 // === CREATE JOB FORM ===
 function openForm() {
@@ -261,25 +184,12 @@ document.getElementById('addStockItemBtn').onclick = () => {
     if (item) { newJobStock.push(item); inp.value = ''; renderStockChips('stockChipsCreate', newJobStock, i => newJobStock.splice(i,1)); }
 };
 document.getElementById('inputStockItem').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addStockItemBtn').click(); } });
-
-function clearForm() {
-    document.getElementById("inputJobName").value = "";
-    document.getElementById("inputAddress").value = "";
-    document.getElementById("inputClientName").value = "";
-    document.getElementById("startDate").value = "";
-    document.getElementById("inputFault").value = "";
-    document.getElementById("inputPhone").value = "";
-    newJobStock = [];
-    renderStockChips('stockChipsCreate', [], null);
-}
-
 newJobButton.onclick = async () => {
     const jobName = document.getElementById("inputJobName").value.trim();
     if (!jobName) { alert("Please enter a job name."); return; }
     newJobButton.disabled = true;
     newJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Saving...';
-
-    const jobData = {
+    const { data, error } = await db.from("Jobs").insert([{
         job_name: jobName,
         address: document.getElementById("inputAddress").value.trim(),
         client_name: document.getElementById("inputClientName").value.trim(),
@@ -288,25 +198,7 @@ newJobButton.onclick = async () => {
         fault_desc: document.getElementById("inputFault").value.trim(),
         status: "active",
         phone: document.getElementById("inputPhone").value.trim()
-    };
-
-    if (!navigator.onLine) {
-        const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        const localJob = { ...jobData, id: tempId, tempId: tempId, created_at: new Date().toISOString() };
-        const cached = getCachedAllJobs();
-        cached.unshift(localJob);
-        cacheAllJobs(cached);
-        addToQueue({ type: 'create_job', data: { ...jobData, tempId } });
-        renderJobList(cached);
-        alert('📶 Job saved locally and will sync when online.');
-        clearForm();
-        closeForm();
-        newJobButton.disabled = false;
-        newJobButton.innerHTML = '<i class="fa-solid fa-check"></i> Create Job';
-        return;
-    }
-
-    const { data, error } = await db.from("Jobs").insert([jobData]).select().single();
+    }]).select().single();
     newJobButton.disabled = false;
     newJobButton.innerHTML = '<i class="fa-solid fa-check"></i> Create Job';
     if (error) { alert("Failed to save job."); return; }
@@ -314,9 +206,17 @@ newJobButton.onclick = async () => {
     jobs.unshift(data);
     cacheAllJobs(jobs);
     renderJobList(jobs);
-    clearForm();
+    document.getElementById("inputJobName").value = "";
+    document.getElementById("inputAddress").value = "";
+    document.getElementById("inputClientName").value = "";
+    document.getElementById("startDate").value = "";
+    document.getElementById("inputFault").value = "";
+    document.getElementById("inputPhone").value = "";
+    newJobStock = [];
+    renderStockChips('stockChipsCreate', [], null);
     closeForm();
 };
+
 
 // === JOB LIST ===
 searchInput.oninput = (e) => {
@@ -341,46 +241,45 @@ function getJobStatus(job) {
 }
 async function loadJobs() {
     jobCardsContainer.innerHTML = '<div class="skeleton"></div>'.repeat(3);
-    if (navigator.onLine) {
-        const { data, error } = await db.from("Jobs").select("*").order("created_at", { ascending: false });
-        if (!error && data) {
-            cacheAllJobs(data);
-            renderJobList(data);
-            return;
-        }
-    }
-    const cached = getCachedAllJobs();
-    if (cached.length) renderJobList(cached);
-    else jobCardsContainer.innerHTML = `<p class="emptyState">No jobs found. ${!navigator.onLine ? ' (offline)' : ''}</p>`;
-}
-function renderJobList(jobs) {
-    const allJobs = jobs || getCachedAllJobs();
-    
-    // Update badge counts
-    const counts = { active: 0, upcoming: 0, completed: 0 };
-    allJobs.forEach(j => counts[getJobStatus(j)]++);
-    document.getElementById('activeCount').textContent = counts.active;
-    document.getElementById('upcomingCount').textContent = counts.upcoming;
-    document.getElementById('completedCount').textContent = counts.completed;
-
-    // Apply search filter
-    const filtered = allJobs.filter(j => !currentSearchTerm || 
-        (j.job_name||"").toLowerCase().includes(currentSearchTerm) || 
-        (j.client_name||"").toLowerCase().includes(currentSearchTerm));
-
-    // Filter by selected tab
-    const statusFiltered = filtered.filter(j => getJobStatus(j) === selectedTab);
-
-    jobCardsContainer.innerHTML = '';
-    if (statusFiltered.length === 0) {
-        jobCardsContainer.innerHTML = `<p class="emptyState">No ${selectedTab} jobs found.</p>`;
+    const { data, error } = await db.from("Jobs").select("*").order("created_at", { ascending: false });
+    if (error || !data) {
+        const cached = getCachedAllJobs();
+        if (cached.length) renderJobList(cached);
+        else jobCardsContainer.innerHTML = `<p class="emptyState">Failed to load jobs.</p>`;
         return;
     }
-
-    statusFiltered.forEach(job => {
-        const card = buildJobCard(job);
-        jobCardsContainer.appendChild(card);
-    });
+    cacheAllJobs(data);
+    renderJobList(data);
+}
+function renderJobList(jobs) {
+    const filtered = jobs.filter(j => !currentSearchTerm || (j.job_name||"").toLowerCase().includes(currentSearchTerm) || (j.client_name||"").toLowerCase().includes(currentSearchTerm));
+    const groups = { active: [], upcoming: [], completed: [] };
+    filtered.forEach(j => groups[getJobStatus(j)].push(j));
+    jobCardsContainer.innerHTML = "";
+    for (const [key, title, icon] of [['active','Active','fa-play'],['upcoming','Upcoming','fa-calendar'],['completed','Completed','fa-check-circle']]) {
+        if (groups[key].length) {
+            const header = document.createElement("div");
+            header.className = "statusGroupHeader";
+            if (groupCollapsedState[key]) header.classList.add("collapsed");
+            header.innerHTML = `<span class="statusGroupTitle"><i class="fa-solid ${icon}"></i> ${title} <span class="statusGroupCount">${groups[key].length}</span></span><i class="fa-solid fa-chevron-down groupChevron"></i>`;
+            header.onclick = () => {
+                header.classList.toggle("collapsed");
+                groupCollapsedState[key] = header.classList.contains("collapsed");
+                let next = header.nextSibling;
+                while (next && !next.classList?.contains("statusGroupHeader")) {
+                    if (next.classList?.contains("jobCard")) next.classList.toggle("group-collapsed", groupCollapsedState[key]);
+                    next = next.nextSibling;
+                }
+            };
+            jobCardsContainer.appendChild(header);
+            groups[key].forEach(job => {
+                const card = buildJobCard(job);
+                if (groupCollapsedState[key]) card.classList.add("group-collapsed");
+                jobCardsContainer.appendChild(card);
+            });
+        }
+    }
+    if (!filtered.length) jobCardsContainer.innerHTML = `<p class="emptyState">No jobs found.</p>`;
 }
 function buildJobCard(job) {
     const card = document.createElement("div");
@@ -388,16 +287,14 @@ function buildJobCard(job) {
     card.dataset.id = job.id;
     const status = getJobStatus(job);
     const { bg, color } = status === 'active' ? { bg: "#fef3c7", color: "#d97706" } : status === 'upcoming' ? { bg: "#dbeafe", color: "#2563eb" } : { bg: "#dcfce7", color: "#16a34a" };
-    const isTemp = job.tempId ? true : false;
-    const pendingBadge = isTemp ? `<span style="background:#f59e0b;color:#111;font-size:0.6rem;padding:2px 8px;border-radius:12px;margin-left:6px;">⏳ Syncing</span>` : '';
-    card.innerHTML = `<div class="jobCardHeader"><p class="jobName">${escapeHtml(job.job_name)} ${pendingBadge}</p><span class="statusBadge" style="background:${bg};color:${color}">${status}</span></div><p class="jobSub">${escapeHtml(job.client_name||'No client')} · ${job.start_date||'No date'}</p>`;
+    card.innerHTML = `<div class="jobCardHeader"><p class="jobName">${escapeHtml(job.job_name)}</p><span class="statusBadge" style="background:${bg};color:${color}">${status}</span></div><p class="jobSub">${escapeHtml(job.client_name||'No client')} · ${job.start_date||'No date'}</p>`;
     card.onclick = () => openJobDetail(job.id);
     return card;
 }
 
+
 // === TRAVEL & CLOCK LOGIC ===
 async function fetchActiveTravelLog(jobId) {
-    if (!navigator.onLine) return null;
     const { data } = await db.from("time_logs")
         .select("*")
         .eq("job_id", jobId)
@@ -408,7 +305,6 @@ async function fetchActiveTravelLog(jobId) {
     return data;
 }
 async function fetchActiveWorkSession(jobId) {
-    if (!navigator.onLine) return null;
     const { data } = await db.from("time_logs")
         .select("*")
         .eq("job_id", jobId)
@@ -433,7 +329,7 @@ async function updateTravelUI() {
 }
 
 travelToggleBtn.addEventListener("click", async () => {
-    if (!currentJob || !navigator.onLine) { alert("You must be online to track travel."); return; }
+    if (!currentJob) return;
     travelToggleBtn.disabled = true;
     try {
         if (activeTravelLog) {
@@ -526,24 +422,16 @@ function updateClockUI() {
         clockButton.classList.add("clockedIn");
         clockButtonText.textContent = "Clock Out";
         clockStatus.textContent = `Clocked in at ${new Date(activeWorkSession.clocked_in_at).toLocaleTimeString()}`;
-        if (window.clockInterval) clearInterval(window.clockInterval);
-        window.clockInterval = setInterval(() => {
-            const start = new Date(activeWorkSession.clocked_in_at);
-            const elapsed = Math.floor((Date.now() - start) / 1000);
-            totalTimeDisplay.textContent = `⏳ ${formatDuration(elapsed)}`;
-        }, 1000);
     } else {
         clockButton.classList.remove("clockedIn");
         clockButtonText.textContent = "Clock In";
         clockStatus.textContent = "Not clocked in";
-        if (window.clockInterval) clearInterval(window.clockInterval);
-        totalTimeDisplay.textContent = (currentJob?.total_time_seconds || 0) > 0 ? `Total work time: ${formatDuration(currentJob.total_time_seconds)}` : "";
     }
+    totalTimeDisplay.textContent = (currentJob?.total_time_seconds || 0) > 0 ? `Total work time: ${formatDuration(currentJob.total_time_seconds)}` : "";
 }
 
 clockButton.addEventListener("click", async () => {
     if (!currentJob) return;
-    if (!navigator.onLine) { alert("You must be online to clock in/out."); return; }
     clockButton.disabled = true;
     try {
         if (activeWorkSession) await handleClockOut();
@@ -551,6 +439,7 @@ clockButton.addEventListener("click", async () => {
     } catch (err) { console.error(err); alert("Action failed."); }
     finally { clockButton.disabled = false; }
 });
+
 
 // === JOB DETAIL ===
 async function openJobDetail(jobId) {
@@ -560,49 +449,17 @@ async function openJobDetail(jobId) {
     document.getElementById('addStockInlineForm').style.display = 'none';
     document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
 
-    let job = getCachedJob(jobId);
-    if (job) {
-        currentJob = job;
-        populateDetailView(job);
-        if (navigator.onLine) {
-            try {
-                const { data, error } = await db.from("Jobs").select("*").eq("id", jobId).single();
-                if (!error && data) {
-                    currentJob = data;
-                    cacheJob(data);
-                    populateDetailView(data);
-                }
-            } catch {}
-        }
-    } else if (navigator.onLine) {
-        const { data, error } = await db.from("Jobs").select("*").eq("id", jobId).single();
-        if (error) { alert("Failed to load job details."); closeJobDetail(); return; }
-        currentJob = data;
-        cacheJob(data);
-        populateDetailView(data);
-    } else {
-        alert("You are offline and this job is not cached.");
-        closeJobDetail();
-        return;
-    }
+    const { data, error } = await db.from("Jobs").select("*").eq("id", jobId).single();
+    if (error) { alert("Failed to load job details."); closeJobDetail(); return; }
+    currentJob = data;
+    cacheJob(data);
+    populateDetailView(data);
 
-    if (navigator.onLine) {
-        activeTravelLog = await fetchActiveTravelLog(jobId);
-        activeWorkSession = await fetchActiveWorkSession(jobId);
-        await updateTravelUI();
-        updateClockUI();
-        loadTimeLogs(jobId);
-        travelToggleBtn.disabled = false;
-        clockButton.disabled = false;
-    } else {
-        activeTravelLog = null;
-        activeWorkSession = null;
-        travelToggleBtn.disabled = true;
-        clockButton.disabled = true;
-        clockStatus.textContent = 'Offline – clock/travel unavailable';
-        travelStatus.textContent = '';
-        totalTimeDisplay.textContent = '';
-    }
+    activeTravelLog = await fetchActiveTravelLog(jobId);
+    activeWorkSession = await fetchActiveWorkSession(jobId);
+    await updateTravelUI();
+    updateClockUI();
+    loadTimeLogs(jobId);
 
     capturedPhotos = [];
     renderPhotoGrid();
@@ -613,7 +470,6 @@ function closeJobDetail() {
     currentJob = null;
     activeWorkSession = null;
     activeTravelLog = null;
-    if (window.clockInterval) clearInterval(window.clockInterval);
 }
 jobDetailBack.onclick = closeJobDetail;
 
@@ -623,6 +479,7 @@ function populateDetailView(job) {
     document.getElementById("jobDetailTitle").textContent = job.job_name;
     document.getElementById("detailJobName").textContent = job.job_name || "—";
     
+    // ---- PHONE: clickable with tel: link ----
     const phoneSpan = document.getElementById("detailPhone");
     const phone = job.phone || "";
     if (phone) {
@@ -632,7 +489,9 @@ function populateDetailView(job) {
         phoneSpan.textContent = "—";
         phoneSpan.style.cursor = "default";
     }
+    // ------------------------------------------
 
+    // ---- ADDRESS: clickable with map link ----
     const addressSpan = document.getElementById("detailAddress");
     const addr = job.address || "";
     if (addr) {
@@ -648,6 +507,7 @@ function populateDetailView(job) {
         addressSpan.style.cursor = "default";
         addressSpan.onclick = null;
     }
+    // ------------------------------------------
 
     document.getElementById("detailClientName").textContent = job.client_name || "—";
     document.getElementById("detailStartDate").textContent = job.start_date || "—";
@@ -671,11 +531,9 @@ function populateDetailView(job) {
 async function loadTimeLogs(jobId) {
     const timeLogsContainer = document.getElementById("timeLogsContainer");
     if (!timeLogsContainer) return;
-    if (!navigator.onLine) {
-        timeLogsContainer.innerHTML = '<p class="emptyState">Offline – time logs not available.</p>';
-        return;
-    }
+    
     timeLogsContainer.innerHTML = '<p class="emptyState">Loading...</p>';
+    
     const oldPagination = document.querySelector(".pagination-controls");
     if (oldPagination) oldPagination.remove();
     
@@ -690,6 +548,7 @@ async function loadTimeLogs(jobId) {
         currentLogsPage = 1;
         return;
     }
+    
     allTimeLogs = data;
     currentLogsPage = 1;
     renderTimeLogsPage();
@@ -698,24 +557,30 @@ async function loadTimeLogs(jobId) {
 function renderTimeLogsPage() {
     const timeLogsContainer = document.getElementById("timeLogsContainer");
     if (!timeLogsContainer) return;
+    
     if (!allTimeLogs.length) {
         timeLogsContainer.innerHTML = '<p class="emptyState">No time records yet.</p>';
         return;
     }
+    
     const startIdx = (currentLogsPage - 1) * logsPerPage;
     const endIdx = startIdx + logsPerPage;
     const pageLogs = allTimeLogs.slice(startIdx, endIdx);
+    
     const logsHtml = pageLogs.map(log => {
         const inTime = new Date(log.clocked_in_at);
         const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
         const prefix = log.is_travel ? "🚗 Travel · " : "⏱️ Work · ";
         let duration = log.duration_seconds;
+        
         if (!outTime && !log.clocked_out_at && log.is_travel && window.activeTravelLog && window.activeTravelLog.id === log.id) {
             duration = Math.floor((new Date() - inTime) / 1000);
         }
+        
         const formattedDuration = formatDuration(duration);
         const dateStr = inTime.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         const timeRange = `${inTime.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })} → ${outTime ? outTime.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' }) : "—"}`;
+        
         return `<div class="timeLogRow">
             <div>
                 <b>${escapeHtml(prefix)}${escapeHtml(log.user_name)}</b><br>
@@ -725,6 +590,7 @@ function renderTimeLogsPage() {
             <div>${formattedDuration}</div>
         </div>`;
     }).join('');
+    
     const totalPages = Math.ceil(allTimeLogs.length / logsPerPage);
     const paginationHtml = `
         <div class="pagination-controls">
@@ -737,7 +603,9 @@ function renderTimeLogsPage() {
             </button>
         </div>
     `;
+    
     timeLogsContainer.innerHTML = logsHtml + paginationHtml;
+    
     const prevBtn = timeLogsContainer.querySelector(".prev-page");
     const nextBtn = timeLogsContainer.querySelector(".next-page");
     if (prevBtn && !prevBtn.disabled) {
@@ -758,6 +626,7 @@ function renderTimeLogsPage() {
     }
 }
 
+
 // === STOCK INLINE ADD ===
 document.getElementById('addStockInlineBtn').onclick = () => {
     document.getElementById('addStockInlineForm').style.display = 'flex';
@@ -770,7 +639,6 @@ document.getElementById('cancelAddStockBtn').onclick = () => {
 document.getElementById('addStockInlineConfirmBtn').onclick = async () => {
     const item = document.getElementById('newStockItemInput').value.trim();
     if (!item || !currentJob) return;
-    if (!navigator.onLine) { alert("You must be online to update stock."); return; }
     detailStockArray.push(item);
     const newStock = detailStockArray.join(', ');
     await db.from("Jobs").update({ stock: newStock }).eq("id", currentJob.id);
@@ -781,6 +649,7 @@ document.getElementById('addStockInlineConfirmBtn').onclick = async () => {
     document.getElementById('addStockInlineForm').style.display = 'none';
     document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
 };
+
 
 // === EDIT JOB ===
 jobDetailEditToggle.onclick = () => {
@@ -804,7 +673,6 @@ document.getElementById('editAddStockItemBtn').onclick = () => {
     if (inp.value.trim()) { editJobStock.push(inp.value.trim()); inp.value = ''; renderStockChips('stockChipsEdit', editJobStock, i => editJobStock.splice(i,1)); }
 };
 saveEditButton.onclick = async () => {
-    if (!navigator.onLine) { alert("You must be online to edit a job."); return; }
     const updates = {
         job_name: document.getElementById("editJobName").value.trim(),
         address: document.getElementById("editAddress").value.trim(),
@@ -829,9 +697,9 @@ saveEditButton.onclick = async () => {
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 };
 
-// === COMPLETE JOB ===
+
+// === COMPLETE JOB (EMAIL FIRST, THEN COMPLETE) ===
 completeJobButton.addEventListener("click", async () => {
-    if (!navigator.onLine) { alert("You must be online to complete a job."); return; }
     if (!confirm("Mark this job as complete? A summary email will be sent first.")) return;
 
     if (activeWorkSession) {
@@ -914,14 +782,15 @@ completeJobButton.addEventListener("click", async () => {
     }
 });
 
+
 // === UNCOMPLETE JOB ===
 uncompleteJobButton.addEventListener("click", async () => {
-    if (!navigator.onLine) { alert("You must be online to uncomplete a job."); return; }
     if (!confirm("Mark this job as active again?")) return;
     await db.from("Jobs").update({ status: "active" }).eq("id", currentJob.id);
     loadJobs();
     closeJobDetail();
 });
+
 
 // === PHOTOS ===
 function renderPhotoGrid() {
@@ -952,11 +821,13 @@ takePhotoBtn.addEventListener("click", () => {
 
 sendPhotosEmailBtn.addEventListener("click", async () => {
     if (!capturedPhotos.length) return;
+
     const files = await Promise.all(capturedPhotos.map(async (dataUrl, idx) => {
         const res = await fetch(dataUrl);
         const blob = await res.blob();
         return new File([blob], `job_photo_${idx + 1}.jpg`, { type: blob.type });
     }));
+
     if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
         try {
             await navigator.share({
@@ -975,20 +846,30 @@ sendPhotosEmailBtn.addEventListener("click", async () => {
     }
 });
 
-// === SERVICE WORKER & UPDATES ===
+
+// ==================== SERVICE WORKER & UPDATES ====================
+
+// Register SW and listen for update messages
+
+// setTimeout(() => window.location.reload(), 30000);
+
 async function registerSW() {
     if (!('serviceWorker' in navigator)) return;
+    
     const registration = await navigator.serviceWorker.register('/sw.js');
     console.log('SW registered');
+    
     navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data?.type === 'UPDATE_AVAILABLE') {
             showUpdateBanner();
         }
     });
 }
+
 const manualUpdateBtn = document.getElementById('manual-update-btn');
 if (manualUpdateBtn) {
     manualUpdateBtn.addEventListener('click', async () => {
+        // Unregister all service workers
         if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
             for (const registration of registrations) {
@@ -999,6 +880,7 @@ if (manualUpdateBtn) {
         window.location.reload(true);
     });
 }
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', registerSW);
 } else {

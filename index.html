@@ -70,7 +70,6 @@
                 <i class="fa-solid fa-plus navIcon"></i>
                 <span>Create Job</span>
             </div>
-            <!-- Manual update button – now between Create Job and Sign Out -->
             <button id="manual-update-btn" class="navItem">
                 <i class="fa-solid fa-rotate-right navIcon"></i>
                 <span>Force Refresh & Update</span>
@@ -102,23 +101,7 @@
                     </div>
                 </div>
             </div>
-
-            <!-- TAB STRIP -->
-            <div id="tabStrip">
-                <div class="tabPill active" data-status="active">
-                    <span class="tabLabel">Active</span>
-                    <span class="tabBadge" id="activeCount">0</span>
-                </div>
-                <div class="tabPill" data-status="upcoming">
-                    <span class="tabLabel">Upcoming</span>
-                    <span class="tabBadge" id="upcomingCount">0</span>
-                </div>
-                <div class="tabPill" data-status="completed">
-                    <span class="tabLabel">Completed</span>
-                    <span class="tabBadge" id="completedCount">0</span>
-                </div>
-            </div>
-
+            <p id="sectionTitle">Active Jobs</p>
             <div id="jobCardsContainer"></div>
         </div>
 
@@ -134,7 +117,7 @@
                     <input placeholder="e.g. Kitchen Rewire" class="newJobInput" id="inputJobName" />
                 </div>
                 <div class="formGroup">
-                    <label class="formHeader">Fault Description</label>
+                    <label class="formHeader">Job Description</label>
                     <textarea placeholder="Job Description" id="inputFault"></textarea>
                 </div>
                 <div class="formGroup">
@@ -186,17 +169,13 @@
                     </div>
                 </div>
 
-                <!-- Travel & Clock Section (combined card) -->
+                <!-- Travel & Clock Section -->
                 <div id="clockSection">
-                    <!-- Travel button (single toggle) -->
                     <button id="travelToggleBtn" class="actionBtn travelBtn">
                         <i class="fa-solid fa-car"></i> <span id="travelToggleText">Start Travel</span>
                     </button>
                     <div id="travelStatus" class="actionStatus"></div>
-
                     <div class="divider"></div>
-
-                    <!-- Clock button -->
                     <button id="clockButton" class="actionBtn clockBtn">
                         <i class="fa-solid fa-clock"></i> <span id="clockButtonText">Clock In</span>
                     </button>
@@ -221,31 +200,31 @@
                 <!-- Job Info (view mode) -->
                 <div id="jobDetailView" class="detailCard">
                     <div class="detailRow">
-                        <span class="detailLabel">Job Name</span>
+                        <span class="detailLabel"><i class="fa-regular fa-file-lines" style="margin-right:6px;"></i>Job Name</span>
                         <span class="detailValue" id="detailJobName"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel">Fault Description</span>
+                        <span class="detailLabel"><i class="fa-regular fa-clipboard" style="margin-right:6px;"></i>Job Description</span>
                         <span class="detailValue" id="detailFault"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel">Address</span>
+                        <span class="detailLabel"><i class="fa-solid fa-location-dot" style="margin-right:6px;"></i>Address</span>
                         <span class="detailValue" id="detailAddress"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel">Client</span>
+                        <span class="detailLabel"><i class="fa-regular fa-user" style="margin-right:6px;"></i>Client</span>
                         <span class="detailValue" id="detailClientName"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel">Contact Phone</span>
+                        <span class="detailLabel"><i class="fa-solid fa-phone" style="margin-right:6px;"></i>Contact Phone</span>
                         <span class="detailValue" id="detailPhone"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel">Start Date</span>
+                        <span class="detailLabel"><i class="fa-regular fa-calendar" style="margin-right:6px;"></i>Start Date</span>
                         <span class="detailValue" id="detailStartDate"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel">Stock</span>
+                        <span class="detailLabel"><i class="fa-solid fa-boxes-stacked" style="margin-right:6px;"></i>Stock</span>
                         <div class="detailValue" id="detailStock">
                             <div id="stockChipsView" class="stockChips"></div>
                             <button class="addStockInlineBtn" id="addStockInlineBtn">
@@ -261,7 +240,7 @@
                         </div>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel">Status</span>
+                        <span class="detailLabel"><i class="fa-regular fa-circle-check" style="margin-right:6px;"></i>Status</span>
                         <span class="detailValue" id="detailStatus"></span>
                     </div>
                 </div>
@@ -273,7 +252,7 @@
                         <input class="newJobInput" id="editJobName" />
                     </div>
                     <div class="formGroup">
-                        <label class="formHeader">Fault Description</label>
+                        <label class="formHeader">Job Description</label>
                         <input class="newJobInput" id="editFault" />
                     </div>
                     <div class="formGroup">
@@ -330,7 +309,7 @@
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script src="script.js"></script>
 
-        <!-- Auto-Update System: Detect new service worker & notify user -->
+        <!-- Auto-Update System -->
         <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;font-size:14px;margin:0;position:sticky;top:0;z-index:9999;">
             <span>New version available!</span>
             <button id="reloadBtn" style="background:#fff;color:#ea580c;border:none;padding:5px 12px;margin-left:8px;border-radius:3px;font-weight:bold">Reload</button>
