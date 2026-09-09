@@ -587,6 +587,20 @@ textarea {
 }
 #jobDetailEditToggle:active { background-color: #f3f4f6; color: #f59e0b; }
 
+/* === CLICKABLE ADDRESS === */
+#detailAddress {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.15s;
+}
+#detailAddress:hover {
+    color: #f59e0b;
+}
+#detailAddress i {
+    font-size: 0.9rem;
+}
+
 /* === CLOCK & TRAVEL SECTION === */
 #clockSection {
     background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
@@ -871,4 +885,3 @@ textarea {
     padding: 0.25rem 0.8rem;
     border-radius: 30px;
 }
-

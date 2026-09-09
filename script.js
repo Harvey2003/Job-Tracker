@@ -479,7 +479,25 @@ function populateDetailView(job) {
     document.getElementById("jobDetailTitle").textContent = job.job_name;
     document.getElementById("detailJobName").textContent = job.job_name || "—";
     document.getElementById("detailPhone").textContent = job.phone || "—";
-    document.getElementById("detailAddress").textContent = job.address || "—";
+    
+    // ---- ADDRESS: clickable with map link ----
+    const addressSpan = document.getElementById("detailAddress");
+    const addr = job.address || "";
+    if (addr) {
+        addressSpan.innerHTML = `${escapeHtml(addr)} <i class="fa-solid fa-location-dot" style="color:#f59e0b; margin-left:6px;"></i>`;
+        addressSpan.style.cursor = "pointer";
+        addressSpan.onclick = (e) => {
+            e.stopPropagation(); // avoid triggering any parent clicks
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`;
+            window.open(url, '_blank');
+        };
+    } else {
+        addressSpan.textContent = "—";
+        addressSpan.style.cursor = "default";
+        addressSpan.onclick = null;
+    }
+    // ------------------------------------------
+
     document.getElementById("detailClientName").textContent = job.client_name || "—";
     document.getElementById("detailStartDate").textContent = job.start_date || "—";
     document.getElementById("detailFault").textContent = job.fault_desc || "—";
