@@ -478,8 +478,19 @@ function populateDetailView(job) {
     const { bg, color } = status === 'active' ? { bg: "#fef3c7", color: "#d97706" } : status === 'upcoming' ? { bg: "#dbeafe", color: "#2563eb" } : { bg: "#dcfce7", color: "#16a34a" };
     document.getElementById("jobDetailTitle").textContent = job.job_name;
     document.getElementById("detailJobName").textContent = job.job_name || "—";
-    document.getElementById("detailPhone").textContent = job.phone || "—";
     
+    // ---- PHONE: clickable with tel: link ----
+    const phoneSpan = document.getElementById("detailPhone");
+    const phone = job.phone || "";
+    if (phone) {
+        phoneSpan.innerHTML = `<a href="tel:${encodeURIComponent(phone)}" style="color:inherit; text-decoration:none;" class="clickable-phone">${escapeHtml(phone)} <i class="fa-solid fa-phone" style="color:#10b981; margin-left:6px;"></i></a>`;
+        phoneSpan.style.cursor = "pointer";
+    } else {
+        phoneSpan.textContent = "—";
+        phoneSpan.style.cursor = "default";
+    }
+    // ------------------------------------------
+
     // ---- ADDRESS: clickable with map link ----
     const addressSpan = document.getElementById("detailAddress");
     const addr = job.address || "";
@@ -487,7 +498,7 @@ function populateDetailView(job) {
         addressSpan.innerHTML = `${escapeHtml(addr)} <i class="fa-solid fa-location-dot" style="color:#f59e0b; margin-left:6px;"></i>`;
         addressSpan.style.cursor = "pointer";
         addressSpan.onclick = (e) => {
-            e.stopPropagation(); // avoid triggering any parent clicks
+            e.stopPropagation();
             const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`;
             window.open(url, '_blank');
         };

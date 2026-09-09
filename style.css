@@ -587,8 +587,8 @@ textarea {
 }
 #jobDetailEditToggle:active { background-color: #f3f4f6; color: #f59e0b; }
 
-/* === CLICKABLE ADDRESS === */
-#detailAddress {
+/* === CLICKABLE ADDRESS & PHONE === */
+#detailAddress, .clickable-phone {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -597,7 +597,10 @@ textarea {
 #detailAddress:hover {
     color: #f59e0b;
 }
-#detailAddress i {
+.clickable-phone:hover {
+    color: #10b981;
+}
+#detailAddress i, .clickable-phone i {
     font-size: 0.9rem;
 }
 
