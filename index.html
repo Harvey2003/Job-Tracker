@@ -154,10 +154,11 @@
             </div>
         </div>
 
-        <!-- JOB DETAIL PANEL – MODERN DASHBOARD -->
+        <!-- JOB DETAIL PANEL -->
         <div id="jobDetail">
             <div id="jobDetailCard">
-                <!-- HEADER -->
+
+                <!-- Header -->
                 <div id="jobDetailHeader">
                     <div id="jobDetailBack">
                         <i class="fa-solid fa-arrow-left"></i>
@@ -168,12 +169,7 @@
                     </div>
                 </div>
 
-                <!-- STATUS BADGE -->
-                <div style="display:flex; justify-content:center; margin-top:-6px; margin-bottom:2px;">
-                    <span id="detailStatus" class="detailStatusBadge" style="background:#fef3c7; color:#d97706;">Active</span>
-                </div>
-
-                <!-- CLOCK / TRAVEL (UNCHANGED) -->
+                <!-- Travel & Clock Section -->
                 <div id="clockSection">
                     <button id="travelToggleBtn" class="actionBtn travelBtn">
                         <i class="fa-solid fa-car"></i> <span id="travelToggleText">Start Travel</span>
@@ -187,80 +183,70 @@
                     <p id="totalTimeDisplay" class="totalTime"></p>
                 </div>
 
-                <!-- VIEW MODE: DASHBOARD GRID -->
-                <div id="jobDetailView">
-                    <div class="dashGrid">
-                        <div class="dashItem">
-                            <div class="dashLabel"><i class="fa-regular fa-file-lines"></i> Job Name</div>
-                            <div class="dashValue" id="detailJobName">—</div>
-                        </div>
-                        <div class="dashItem">
-                            <div class="dashLabel"><i class="fa-regular fa-user"></i> Client</div>
-                            <div class="dashValue" id="detailClientName">—</div>
-                        </div>
-                        <div class="dashItem dashFull">
-                            <div class="dashLabel"><i class="fa-solid fa-location-dot"></i> Address</div>
-                            <div class="dashValue" id="detailAddress">—</div>
-                        </div>
-                        <div class="dashItem dashFull">
-                            <div class="dashLabel"><i class="fa-solid fa-phone"></i> Contact Phone</div>
-                            <div class="dashValue" id="detailPhone">—</div>
-                        </div>
-                        <div class="dashItem">
-                            <div class="dashLabel"><i class="fa-regular fa-calendar"></i> Start Date</div>
-                            <div class="dashValue" id="detailStartDate">—</div>
-                        </div>
-                        <div class="dashItem">
-                            <div class="dashLabel"><i class="fa-regular fa-clipboard"></i> Description</div>
-                            <div class="dashValue" id="detailFault" style="font-weight:400; font-size:0.85rem;">—</div>
-                        </div>
-                        <div class="dashItem dashFull">
-                            <div class="dashLabel"><i class="fa-solid fa-boxes-stacked"></i> Stock / Materials</div>
-                            <div class="dashValue">
-                                <div id="stockChipsView" class="dashStockChips"></div>
-                                <button class="addStockInlineBtn" id="addStockInlineBtn">
-                                    <i class="fa-solid fa-plus"></i> Add Stock
+                <!-- Photos Section -->
+                <div id="photosSection" class="detailCard">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span class="detailLabel">Job Photos (max 3)</span>
+                        <button id="takePhotoBtn" class="stockAddBtn" style="padding: 8px 12px;">
+                            <i class="fa-solid fa-camera"></i> Take Photo
+                        </button>
+                    </div>
+                    <div id="photoGrid" class="photoGrid"></div>
+                    <button id="sendPhotosEmailBtn" class="sendPhotosBtn" style="display: none;">
+                        <i class="fa-regular fa-envelope"></i> Send Photos via Email
+                    </button>
+                </div>
+                
+                <!-- Job Info (view mode) -->
+                <div id="jobDetailView" class="detailCard">
+                    <div class="detailRow">
+                        <span class="detailLabel"><i class="fa-regular fa-file-lines" style="margin-right:6px;"></i>Job Name</span>
+                        <span class="detailValue" id="detailJobName"></span>
+                    </div>
+                    <div class="detailRow">
+                        <span class="detailLabel"><i class="fa-regular fa-clipboard" style="margin-right:6px;"></i>Job Description</span>
+                        <span class="detailValue" id="detailFault"></span>
+                    </div>
+                    <div class="detailRow">
+                        <span class="detailLabel"><i class="fa-solid fa-location-dot" style="margin-right:6px;"></i>Address</span>
+                        <span class="detailValue" id="detailAddress"></span>
+                    </div>
+                    <div class="detailRow">
+                        <span class="detailLabel"><i class="fa-regular fa-user" style="margin-right:6px;"></i>Client</span>
+                        <span class="detailValue" id="detailClientName"></span>
+                    </div>
+                    <div class="detailRow">
+                        <span class="detailLabel"><i class="fa-solid fa-phone" style="margin-right:6px;"></i>Contact Phone</span>
+                        <span class="detailValue" id="detailPhone"></span>
+                    </div>
+                    <div class="detailRow">
+                        <span class="detailLabel"><i class="fa-regular fa-calendar" style="margin-right:6px;"></i>Start Date</span>
+                        <span class="detailValue" id="detailStartDate"></span>
+                    </div>
+                    <div class="detailRow">
+                        <span class="detailLabel"><i class="fa-solid fa-boxes-stacked" style="margin-right:6px;"></i>Stock</span>
+                        <div class="detailValue" id="detailStock">
+                            <div id="stockChipsView" class="stockChips"></div>
+                            <button class="addStockInlineBtn" id="addStockInlineBtn">
+                                <i class="fa-solid fa-plus"></i> Add Stock
+                            </button>
+                            <div id="addStockInlineForm" class="addStockInlineForm" style="display:none;">
+                                <input placeholder="Item name..." class="newJobInput" id="newStockItemInput" />
+                                <button class="stockAddBtn" id="addStockInlineConfirmBtn">
+                                    <i class="fa-solid fa-check"></i> Add
                                 </button>
-                                <div id="addStockInlineForm" class="addStockInlineForm" style="display:none;">
-                                    <input placeholder="Item name..." class="newJobInput" id="newStockItemInput" />
-                                    <button class="stockAddBtn" id="addStockInlineConfirmBtn">
-                                        <i class="fa-solid fa-check"></i> Add
-                                    </button>
-                                    <button class="stockAddBtn cancelBtn" id="cancelAddStockBtn">Cancel</button>
-                                </div>
+                                <button class="stockAddBtn cancelBtn" id="cancelAddStockBtn">Cancel</button>
                             </div>
                         </div>
                     </div>
-
-                    <!-- PHOTOS -->
-                    <div id="photosSection">
-                        <div class="photoHeader">
-                            <span class="photoLabel"><i class="fa-regular fa-image"></i> Job Photos (max 3)</span>
-                            <button id="takePhotoBtn"><i class="fa-solid fa-camera"></i> Take Photo</button>
-                        </div>
-                        <div id="photoGrid" class="photoGrid"></div>
-                        <button id="sendPhotosEmailBtn" class="sendPhotosBtn" style="display:none;">
-                            <i class="fa-regular fa-envelope"></i> Send Photos via Email
-                        </button>
+                    <div class="detailRow">
+                        <span class="detailLabel"><i class="fa-regular fa-circle-check" style="margin-right:6px;"></i>Status</span>
+                        <span class="detailValue" id="detailStatus"></span>
                     </div>
-
-                    <!-- TIME LOGS -->
-                    <div id="timeLogsSection">
-                        <div class="sectionSubTitle"><i class="fa-regular fa-clock"></i> Time & Travel Logs</div>
-                        <div id="timeLogsContainer"></div>
-                    </div>
-
-                    <!-- ACTION BUTTONS -->
-                    <button class="formButton" id="completeJobButton">
-                        <i class="fa-solid fa-flag-checkered"></i> Complete Job
-                    </button>
-                    <button class="formButton" id="uncompleteJobButton" style="display:none;">
-                        <i class="fa-solid fa-rotate-left"></i> Mark as Active
-                    </button>
                 </div>
 
-                <!-- EDIT MODE -->
-                <div id="jobDetailEdit" style="display:none;">
+                <!-- Job Info (edit mode) -->
+                <div id="jobDetailEdit" class="detailCard" style="display:none;">
                     <div class="formGroup">
                         <label class="formHeader">Job Name</label>
                         <input class="newJobInput" id="editJobName" />
@@ -301,6 +287,21 @@
                         <i class="fa-solid fa-check"></i> Save Changes
                     </button>
                 </div>
+
+                <!-- Time Logs -->
+                <div id="timeLogsSection" class="detailCard">
+                    <p class="sectionSubTitle">Time & Travel Logs</p>
+                    <div id="timeLogsContainer"></div>
+                </div>
+
+                <!-- Action Buttons -->
+                <button class="formButton" id="completeJobButton">
+                    <i class="fa-solid fa-flag-checkered"></i> Complete Job
+                </button>
+                <button class="formButton" id="uncompleteJobButton" style="display:none;">
+                    <i class="fa-solid fa-rotate-left"></i> Mark as Active
+                </button>
+
             </div>
         </div>
 
@@ -308,11 +309,12 @@
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
         <script src="script.js"></script>
 
-        <!-- Auto-Update Banner -->
+        <!-- Auto-Update System -->
         <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;font-size:14px;margin:0;position:sticky;top:0;z-index:9999;">
             <span>New version available!</span>
             <button id="reloadBtn" style="background:#fff;color:#ea580c;border:none;padding:5px 12px;margin-left:8px;border-radius:3px;font-weight:bold">Reload</button>
         </div>
+
         <script src="/Job-Tracker/update-check.js"></script>
     </body>
 </html>
