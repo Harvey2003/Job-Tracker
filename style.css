@@ -138,8 +138,6 @@ body {
     transition: all 0.15s ease;
     min-height: 52px;
 }
-
-/* Additional styling for manual update button */
 #manual-update-btn {
     width: 100%;
     background: none;
@@ -153,13 +151,11 @@ body {
     background-color: #1f2937;
     color: #f9fafb;
 }
-
 .navItem:active { background-color: #1f2937; color: #f9fafb; }
 .navItem.active { background-color: #1f2937; color: #f59e0b; font-weight: 600; }
 .navIcon { font-size: 1rem; width: 20px; text-align: center; }
 #logoutButton { margin-top: auto; color: #6b7280; }
 #logoutButton:active { background-color: #1f2937; color: #f87171; }
-
 
 /* === MAIN CONTENT === */
 #jobLists { padding: 6vw 5vw; display: flex; flex-direction: column; gap: 3vw; }
@@ -549,91 +545,643 @@ textarea {
 }
 #jobDetail.active { display: block; }
 #jobDetailCard {
-    padding: 5vw 5vw 10vw;
+    padding: 4vw 4vw 10vw;
     display: flex;
     flex-direction: column;
-    gap: 4vw;
+    gap: 18px;
     max-width: 600px;
     margin: 0 auto;
+    background: #f8fafc;
+    min-height: 100vh;
 }
+
+/* ── Header ── */
 #jobDetailHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1vw;
+    margin-bottom: 6px;
+    padding: 0 0 4px 0;
 }
 #jobDetailBack {
-    width: 44px; height: 44px;
-    border-radius: 12px;
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: #ffffff;
+    border: 1px solid #eef2f6;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #6b7280;
-    transition: background 0.15s;
+    color: #4a5a72;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
 }
-#jobDetailBack:active { background-color: #f3f4f6; }
+#jobDetailBack:active {
+    background: #f1f5f9;
+    transform: scale(0.94);
+}
 #jobDetailTitle {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: #111827;
     flex: 1;
     text-align: center;
-    padding: 0 8px;
+    padding: 0 10px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    letter-spacing: -0.3px;
 }
 #jobDetailEditToggle {
-    width: 44px; height: 44px;
-    border-radius: 12px;
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: #ffffff;
+    border: 1px solid #eef2f6;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #6b7280;
-    transition: background 0.15s;
+    color: #4a5a72;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
 }
-#jobDetailEditToggle:active { background-color: #f3f4f6; color: #f59e0b; }
+#jobDetailEditToggle:active {
+    background: #f1f5f9;
+    color: #f59e0b;
+    transform: scale(0.94);
+}
 
-/* === CLICKABLE ADDRESS & PHONE === */
-#detailAddress, .clickable-phone {
+/* ── Status badge (detail) ── */
+.detailStatusBadge {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 4px 10px 4px 6px;
-    border-radius: 30px;
-    background-color: #f8fafc;
-    border: 1px solid #e5e7eb;
-    transition: all 0.15s ease;
-    cursor: pointer;
-    text-decoration: none !important;
-    color: #111827;
-    font-weight: 500;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.3rem 1rem;
+    border-radius: 100px;
+    letter-spacing: 0.02em;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+    text-transform: capitalize;
 }
-#detailAddress:hover, .clickable-phone:hover {
-    background-color: #f3f4f6;
-    border-color: #d1d5db;
-}
-#detailAddress:active, .clickable-phone:active {
-    transform: scale(0.96);
-}
-#detailAddress i, .clickable-phone i {
-    font-size: 0.9rem;
-}
-#detailAddress i.fa-location-dot { color: #f59e0b; }
-.clickable-phone i.fa-phone { color: #10b981; }
 
-.detailValue a {
+/* ── Dashboard Grid ── */
+.dashGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 2px;
+}
+.dashGrid .dashItem {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 14px 14px 12px;
+    border: 1px solid #eef2f6;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    transition: all 0.15s ease;
+}
+.dashGrid .dashItem:active {
+    transform: scale(0.98);
+    border-color: #dce3ec;
+}
+.dashGrid .dashItem .dashLabel {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #8a9bb0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 4px;
+}
+.dashGrid .dashItem .dashLabel i {
+    font-size: 0.75rem;
+    color: #b0c0d0;
+}
+.dashGrid .dashItem .dashValue {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.3;
+    word-break: break-word;
+}
+.dashGrid .dashItem .dashValue a {
     color: inherit;
     text-decoration: none;
 }
+.dashGrid .dashItem .dashValue .clickable-phone,
+.dashGrid .dashItem .dashValue #detailAddress {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px 2px 6px;
+    border-radius: 30px;
+    background: #f8fafc;
+    border: 1px solid #eef2f6;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: #111827;
+    text-decoration: none !important;
+}
+.dashGrid .dashItem .dashValue .clickable-phone:hover,
+.dashGrid .dashItem .dashValue #detailAddress:hover {
+    background: #f1f5f9;
+    border-color: #dce3ec;
+}
+.dashGrid .dashItem .dashValue .clickable-phone:active,
+.dashGrid .dashItem .dashValue #detailAddress:active {
+    transform: scale(0.96);
+}
+.dashGrid .dashItem .dashValue .clickable-phone i,
+.dashGrid .dashItem .dashValue #detailAddress i {
+    font-size: 0.75rem;
+}
+.dashGrid .dashItem .dashValue #detailAddress i.fa-location-dot {
+    color: #f59e0b;
+}
+.dashGrid .dashItem .dashValue .clickable-phone i.fa-phone {
+    color: #10b981;
+}
+.dashFull {
+    grid-column: 1 / -1;
+}
 
-/* === CLOCK & TRAVEL SECTION === */
+/* ── Stock chips inside dash ── */
+.dashStockChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+}
+.dashStockChips .stockChip {
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.dashStockChips .stockChip.emptyChip {
+    background: #f8fafc;
+    border-color: #eef2f6;
+    color: #aab8c8;
+    font-weight: 400;
+}
+.addStockInlineBtn {
+    background: none;
+    border: 1px dashed #f59e0b;
+    color: #f59e0b;
+    border-radius: 30px;
+    padding: 2px 14px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    transition: all 0.15s ease;
+    height: 30px;
+}
+.addStockInlineBtn:active {
+    background: #fffbeb;
+    transform: scale(0.96);
+}
+.addStockInlineForm {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.addStockInlineForm .newJobInput {
+    flex: 1;
+    min-width: 120px;
+    height: 36px;
+    font-size: 0.85rem;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1.5px solid #e5e7eb;
+    background: #fafbfc;
+}
+.addStockInlineForm .newJobInput:focus {
+    border-color: #f59e0b;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08);
+}
+.addStockInlineForm .stockAddBtn {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 10px;
+    background: #f59e0b;
+    color: #111827;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.addStockInlineForm .stockAddBtn:active {
+    background: #d97706;
+    transform: scale(0.96);
+}
+.addStockInlineForm .cancelBtn {
+    background: #e5e7eb;
+    color: #374151;
+}
+.addStockInlineForm .cancelBtn:active {
+    background: #d1d5db;
+}
+
+/* ── Photos Section ── */
+#photosSection {
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #eef2f6;
+    padding: 18px 18px 16px;
+    margin: 0;
+}
+#photosSection .photoHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+#photosSection .photoHeader .photoLabel {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #8a9bb0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+#photosSection .photoHeader .photoLabel i {
+    font-size: 0.8rem;
+    color: #b0c0d0;
+}
+#takePhotoBtn {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 30px;
+    background: #f59e0b;
+    color: #111827;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+#takePhotoBtn:active {
+    background: #d97706;
+    transform: scale(0.96);
+}
+.photoGrid {
+    display: flex;
+    gap: 12px;
+    margin: 10px 0 12px;
+    flex-wrap: wrap;
+    min-height: 40px;
+}
+.photoThumb {
+    width: 76px;
+    height: 76px;
+    background: #f3f4f6;
+    border-radius: 14px;
+    position: relative;
+    border: 1px solid #eef2f6;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.photoThumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.photoThumb .removePhoto {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc2626;
+    color: white;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    cursor: pointer;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+    border: 2px solid #ffffff;
+}
+.photoThumb .removePhoto:active {
+    transform: scale(0.88);
+}
+.sendPhotosBtn {
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 8px 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-top: 2px;
+}
+.sendPhotosBtn:active {
+    background: #059669;
+    transform: scale(0.96);
+}
+
+/* ── Time Logs ── */
+#timeLogsSection {
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #eef2f6;
+    padding: 18px 18px 16px;
+    margin: 0;
+}
+#timeLogsSection .sectionSubTitle {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #8a9bb0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1.5px solid #eef2f6;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+#timeLogsSection .sectionSubTitle i {
+    font-size: 0.8rem;
+    color: #b0c0d0;
+}
+.timeLogRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.8rem 0.6rem;
+    margin: 0.4rem 0;
+    background: #fafcff;
+    border-radius: 14px;
+    border: 1px solid #eef2f6;
+    transition: all 0.15s ease;
+    font-size: 0.8rem;
+}
+.timeLogRow:hover {
+    background: #ffffff;
+    border-color: #dce3ec;
+}
+.timeLogRow b {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1e2a3e;
+    display: inline-block;
+    margin-bottom: 0.1rem;
+}
+.timeLogRow small {
+    color: #7e8b9f;
+    font-size: 0.65rem;
+}
+.timeLogRow .logTypeIcon {
+    margin-right: 4px;
+}
+.timeLogRow .logUser {
+    font-weight: 500;
+}
+.timeLogRow .logTimeRange {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #2c3e50;
+    flex: 1;
+    text-align: center;
+}
+.timeLogRow .logDuration {
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: #2c6e9e;
+    background: #eef4ff;
+    padding: 0.15rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+.pagination-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #eef2f6;
+}
+.pagination-btn {
+    background: #f8fafd;
+    border: 1px solid #e2e8f0;
+    border-radius: 40px;
+    padding: 0.3rem 1rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #2c6e9e;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.pagination-btn:active {
+    transform: scale(0.94);
+    background: #eef4ff;
+}
+.pagination-btn[disabled] {
+    opacity: 0.35;
+    pointer-events: none;
+}
+.page-indicator {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #5a6e8a;
+    background: #f1f5f9;
+    padding: 0.2rem 0.8rem;
+    border-radius: 30px;
+}
+
+/* ── Complete / Uncomplete Buttons ── */
+#completeJobButton {
+    background: #111827;
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 16px;
+    height: 54px;
+    border: none;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: 100%;
+    margin-top: 4px;
+}
+#completeJobButton:active {
+    transform: scale(0.97);
+    background: #1f2937;
+}
+#uncompleteJobButton {
+    background: #e5e7eb;
+    color: #374151;
+    font-weight: 600;
+    border-radius: 16px;
+    height: 54px;
+    border: none;
+    font-size: 1rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: 100%;
+    margin-top: 4px;
+}
+#uncompleteJobButton:active {
+    transform: scale(0.97);
+    background: #d1d5db;
+}
+
+/* ── Edit Mode ── */
+#jobDetailEdit {
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #eef2f6;
+    padding: 20px 20px 18px;
+}
+#jobDetailEdit .formGroup {
+    margin-bottom: 16px;
+    gap: 6px;
+}
+#jobDetailEdit .formHeader {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #8a9bb0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+#jobDetailEdit .newJobInput {
+    height: 44px;
+    font-size: 0.9rem;
+    border-radius: 12px;
+    border: 1.5px solid #e5e7eb;
+    background: #fafbfc;
+    padding: 0 14px;
+    width: 100%;
+    transition: border 0.15s;
+}
+#jobDetailEdit .newJobInput:focus {
+    border-color: #f59e0b;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08);
+}
+#jobDetailEdit .stockInputContainer {
+    margin-top: 2px;
+}
+#jobDetailEdit .stockChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+#jobDetailEdit .stockChips .stockChip {
+    font-size: 0.75rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+#jobDetailEdit .stockChips .stockChip .removeChip {
+    cursor: pointer;
+    color: #b45309;
+    font-size: 0.7rem;
+}
+#jobDetailEdit .stockInputRow {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+#jobDetailEdit .stockInputRow .newJobInput {
+    flex: 1;
+    height: 40px;
+}
+#jobDetailEdit .stockAddBtn {
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    background: #f59e0b;
+    color: #111827;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+#jobDetailEdit .stockAddBtn:active {
+    background: #d97706;
+    transform: scale(0.96);
+}
+#saveEditButton {
+    background: #f59e0b;
+    color: #111827;
+    font-weight: 700;
+    border-radius: 14px;
+    height: 52px;
+    border: none;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: 100%;
+    margin-top: 8px;
+}
+#saveEditButton:active {
+    background: #d97706;
+    transform: scale(0.97);
+}
+
+/* ── Clock/Travel Section (unchanged) ── */
 #clockSection {
     background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
     border-radius: 20px;
@@ -641,8 +1189,9 @@ textarea {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    margin: 0;
 }
-.actionBtn {
+#clockSection .actionBtn {
     width: 100%;
     height: 56px;
     border-radius: 14px;
@@ -656,36 +1205,37 @@ textarea {
     cursor: pointer;
     transition: all 0.2s ease;
 }
-.actionBtn:active { transform: scale(0.98); }
-.travelBtn {
-    background-color: #374151;
+#clockSection .actionBtn:active {
+    transform: scale(0.98);
+}
+#clockSection .travelBtn {
+    background: #374151;
     color: #e5e7eb;
 }
-.travelBtn.activeTravel {
-    background-color: #f59e0b;
+#clockSection .travelBtn.activeTravel {
+    background: #f59e0b;
     color: #111827;
 }
-.clockBtn {
-    background-color: #f59e0b;
+#clockSection .clockBtn {
+    background: #f59e0b;
     color: #111827;
 }
-.clockBtn.clockedIn {
-    background-color: #dc2626;
-    color: white;
+#clockSection .clockBtn.clockedIn {
+    background: #dc2626;
+    color: #ffffff;
 }
-.actionStatus {
+#clockSection .actionStatus {
     font-size: 0.75rem;
     color: #9ca3af;
     text-align: center;
-    margin-top: -4px;
-    margin-top: 6px;
+    margin-top: 4px;
 }
-.divider {
+#clockSection .divider {
     height: 1px;
-    background-color: #374151;
+    background: #374151;
     margin: 4px 0;
 }
-.totalTime {
+#clockSection .totalTime {
     font-size: 0.85rem;
     font-weight: 600;
     color: #f59e0b;
@@ -693,226 +1243,29 @@ textarea {
     margin-top: 4px;
 }
 
-/* === PHOTOS SECTION === */
-#photosSection {
-    background-color: #ffffff;
-    border-radius: 16px;
-    border: 1px solid #e5e7eb;
-    padding: 4vw;
+/* ── Responsive ── */
+@media (max-width: 420px) {
+    .dashGrid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .dashGrid .dashItem {
+        padding: 12px 14px 10px;
+    }
+    #jobDetailCard {
+        padding: 4vw 4vw 12vw;
+        gap: 14px;
+    }
 }
-.photoGrid {
-    display: flex;
-    gap: 12px;
-    margin: 16px 0;
-    flex-wrap: wrap;
-}
-.photoThumb {
-    width: 80px;
-    height: 80px;
-    background-color: #f3f4f6;
-    border-radius: 12px;
-    position: relative;
-    border: 1px solid #e5e7eb;
-    overflow: hidden;
-}
-.photoThumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.photoThumb .removePhoto {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    background: #dc2626;
-    color: white;
-    border-radius: 20px;
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    cursor: pointer;
-    z-index: 2;
-}
-.sendPhotosBtn {
-    background-color: #10b981;
-    color: white;
-    border: none;
-    border-radius: 30px;
-    padding: 10px 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-top: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-.sendPhotosBtn:active { background-color: #059669; }
-
-/* === DETAIL ROWS - professional card style === */
-.detailCard {
-    background-color: #ffffff;
-    border-radius: 20px;
-    border: 1px solid #e5e7eb;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-}
-.detailRow {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 4.5vw 5vw;
-    border-bottom: 1px solid #f1f5f9;
-}
-.detailRow:last-child { border-bottom: none; }
-.detailLabel {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    display: flex;
-    align-items: center;
-}
-.detailLabel i {
-    font-size: 0.9rem;
-    width: 1.2em;
-    color: #9ca3af;
-}
-.detailValue {
-    font-size: 1rem;
-    font-weight: 500;
-    color: #111827;
-    line-height: 1.4;
-    word-break: break-word;
-}
-#detailStatus .statusBadge {
-    font-size: 0.8rem;
-    padding: 0.4em 1.2em;
-}
-
-/* === EDIT SECTION === */
-#jobDetailEdit {
-    background-color: #ffffff;
-    border-radius: 20px;
-    border: 1px solid #e5e7eb;
-    padding: 5vw;
-}
-#saveEditButton {
-    background-color: #f59e0b;
-    color: #111827;
-    font-weight: 700;
-}
-#saveEditButton:active { background-color: #d97706; }
-
-/* === TIME LOGS – MODERN STYLES === */
-#timeLogsSection {
-    background-color: #ffffff;
-    border-radius: 20px;
-    border: 1px solid #eef2f6;
-    padding: 1.25rem;
-    margin: 0;
-}
-.sectionSubTitle {
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #6c7a91;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1.5px solid #eef2f6;
-}
-.timeLogRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.9rem 0.75rem;
-    margin: 0.5rem 0;
-    background: #fafcff;
-    border-radius: 14px;
-    border: 1px solid #eef2f6;
-    transition: all 0.15s ease;
-    font-size: 0.8rem;
-}
-.timeLogRow:hover {
-    background: #ffffff;
-    border-color: #dce3ec;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
-}
-.timeLogRow b {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #1e2a3e;
-    display: inline-block;
-    margin-bottom: 0.2rem;
-}
-.timeLogRow small {
-    color: #7e8b9f;
-    font-size: 0.7rem;
-}
-.timeLogRow > div:first-child {
-    flex: 2;
-    min-width: 110px;
-}
-.timeLogRow > div:nth-child(2) {
-    flex: 1.5;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #2c3e50;
-}
-.timeLogRow > div:last-child {
-    flex: 0.8;
-    text-align: right;
-    font-family: 'SF Mono', 'JetBrains Mono', monospace;
-    font-weight: 600;
-    color: #2c6e9e;
-    background: #eef4ff;
-    padding: 0.2rem 0.5rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-}
-
-/* pagination controls */
-.pagination-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 1.25rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid #eef2f6;
-}
-.pagination-btn {
-    background: #f8fafd;
-    border: 1px solid #e2e8f0;
-    border-radius: 40px;
-    padding: 0.4rem 1rem;
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: #2c6e9e;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-.pagination-btn:active {
-    transform: scale(0.96);
-    background: #eef4ff;
-}
-.pagination-btn.disabled {
-    opacity: 0.4;
-    pointer-events: none;
-}
-.page-indicator {
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: #5a6e8a;
-    background: #f1f5f9;
-    padding: 0.25rem 0.8rem;
-    border-radius: 30px;
+@media (min-width: 500px) {
+    #jobDetailCard {
+        padding: 24px 24px 40px;
+        gap: 20px;
+    }
+    .dashGrid .dashItem {
+        padding: 16px 18px 14px;
+    }
+    #jobDetailTitle {
+        font-size: 1.3rem;
+    }
 }
