@@ -67,7 +67,7 @@ let activeWorkSession = null;
 let activeTravelLog   = null;
 let capturedPhotos    = [];
 let currentSearchTerm = "";
-let groupCollapsedState = { active: false, upcoming: false, completed: false };
+let selectedTab       = 'active'; // 'active', 'upcoming', 'completed'
 let newJobStock = [];
 let editJobStock = [];
 let detailStockArray = [];
@@ -169,7 +169,6 @@ async function processQueue() {
             if (item.type === 'create_job') {
                 const { data, error } = await db.from('Jobs').insert(item.data).select().single();
                 if (error) throw error;
-                // Replace temp ID with real ID in cache
                 const cached = getCachedAllJobs();
                 const idx = cached.findIndex(j => j.tempId === item.data.tempId);
                 if (idx !== -1) {
@@ -177,7 +176,6 @@ async function processQueue() {
                     cacheAllJobs(cached);
                 }
             }
-            // Add other actions here if needed
         } catch (err) {
             console.warn('Sync failed, will retry:', item, err);
             remaining.push(item);
@@ -186,15 +184,13 @@ async function processQueue() {
     saveQueue(remaining);
     syncInProgress = false;
     if (remaining.length === 0) {
-        loadJobs(); // refresh list
+        loadJobs();
     }
 }
 
-// Network listeners
 window.addEventListener('online', () => { processQueue(); });
 window.addEventListener('load', () => {
     processQueue();
-    // periodic sync every 30s when online
     setInterval(() => { if (navigator.onLine) processQueue(); }, 30000);
 });
 
@@ -237,6 +233,16 @@ openCloseNav.onclick = () => { navBar.classList.toggle("open"); navOverlay.class
 navOverlay.onclick = closeNav;
 jobsSection.onclick = () => { closeNav(); closeJobDetail(); };
 createJobSection.onclick = () => { closeNav(); openForm(); };
+
+// === TAB SWITCHING ===
+document.querySelectorAll('.tabPill').forEach(pill => {
+    pill.addEventListener('click', function() {
+        document.querySelectorAll('.tabPill').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        selectedTab = this.dataset.status;
+        renderJobList(getCachedAllJobs());
+    });
+});
 
 // === CREATE JOB FORM ===
 function openForm() {
@@ -285,7 +291,6 @@ newJobButton.onclick = async () => {
     };
 
     if (!navigator.onLine) {
-        // Offline: store locally with temp ID
         const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
         const localJob = { ...jobData, id: tempId, tempId: tempId, created_at: new Date().toISOString() };
         const cached = getCachedAllJobs();
@@ -301,7 +306,6 @@ newJobButton.onclick = async () => {
         return;
     }
 
-    // Online: normal insert
     const { data, error } = await db.from("Jobs").insert([jobData]).select().single();
     newJobButton.disabled = false;
     newJobButton.innerHTML = '<i class="fa-solid fa-check"></i> Create Job';
@@ -337,7 +341,6 @@ function getJobStatus(job) {
 }
 async function loadJobs() {
     jobCardsContainer.innerHTML = '<div class="skeleton"></div>'.repeat(3);
-    // Try network first
     if (navigator.onLine) {
         const { data, error } = await db.from("Jobs").select("*").order("created_at", { ascending: false });
         if (!error && data) {
@@ -346,40 +349,38 @@ async function loadJobs() {
             return;
         }
     }
-    // Offline or error: use cache
     const cached = getCachedAllJobs();
     if (cached.length) renderJobList(cached);
     else jobCardsContainer.innerHTML = `<p class="emptyState">No jobs found. ${!navigator.onLine ? ' (offline)' : ''}</p>`;
 }
 function renderJobList(jobs) {
-    const filtered = jobs.filter(j => !currentSearchTerm || (j.job_name||"").toLowerCase().includes(currentSearchTerm) || (j.client_name||"").toLowerCase().includes(currentSearchTerm));
-    const groups = { active: [], upcoming: [], completed: [] };
-    filtered.forEach(j => groups[getJobStatus(j)].push(j));
-    jobCardsContainer.innerHTML = "";
-    for (const [key, title, icon] of [['active','Active','fa-play'],['upcoming','Upcoming','fa-calendar'],['completed','Completed','fa-check-circle']]) {
-        if (groups[key].length) {
-            const header = document.createElement("div");
-            header.className = "statusGroupHeader";
-            if (groupCollapsedState[key]) header.classList.add("collapsed");
-            header.innerHTML = `<span class="statusGroupTitle"><i class="fa-solid ${icon}"></i> ${title} <span class="statusGroupCount">${groups[key].length}</span></span><i class="fa-solid fa-chevron-down groupChevron"></i>`;
-            header.onclick = () => {
-                header.classList.toggle("collapsed");
-                groupCollapsedState[key] = header.classList.contains("collapsed");
-                let next = header.nextSibling;
-                while (next && !next.classList?.contains("statusGroupHeader")) {
-                    if (next.classList?.contains("jobCard")) next.classList.toggle("group-collapsed", groupCollapsedState[key]);
-                    next = next.nextSibling;
-                }
-            };
-            jobCardsContainer.appendChild(header);
-            groups[key].forEach(job => {
-                const card = buildJobCard(job);
-                if (groupCollapsedState[key]) card.classList.add("group-collapsed");
-                jobCardsContainer.appendChild(card);
-            });
-        }
+    const allJobs = jobs || getCachedAllJobs();
+    
+    // Update badge counts
+    const counts = { active: 0, upcoming: 0, completed: 0 };
+    allJobs.forEach(j => counts[getJobStatus(j)]++);
+    document.getElementById('activeCount').textContent = counts.active;
+    document.getElementById('upcomingCount').textContent = counts.upcoming;
+    document.getElementById('completedCount').textContent = counts.completed;
+
+    // Apply search filter
+    const filtered = allJobs.filter(j => !currentSearchTerm || 
+        (j.job_name||"").toLowerCase().includes(currentSearchTerm) || 
+        (j.client_name||"").toLowerCase().includes(currentSearchTerm));
+
+    // Filter by selected tab
+    const statusFiltered = filtered.filter(j => getJobStatus(j) === selectedTab);
+
+    jobCardsContainer.innerHTML = '';
+    if (statusFiltered.length === 0) {
+        jobCardsContainer.innerHTML = `<p class="emptyState">No ${selectedTab} jobs found.</p>`;
+        return;
     }
-    if (!filtered.length) jobCardsContainer.innerHTML = `<p class="emptyState">No jobs found.</p>`;
+
+    statusFiltered.forEach(job => {
+        const card = buildJobCard(job);
+        jobCardsContainer.appendChild(card);
+    });
 }
 function buildJobCard(job) {
     const card = document.createElement("div");
@@ -394,7 +395,7 @@ function buildJobCard(job) {
     return card;
 }
 
-// === TRAVEL & CLOCK LOGIC (unchanged but with offline handling) ===
+// === TRAVEL & CLOCK LOGIC ===
 async function fetchActiveTravelLog(jobId) {
     if (!navigator.onLine) return null;
     const { data } = await db.from("time_logs")
@@ -525,7 +526,6 @@ function updateClockUI() {
         clockButton.classList.add("clockedIn");
         clockButtonText.textContent = "Clock Out";
         clockStatus.textContent = `Clocked in at ${new Date(activeWorkSession.clocked_in_at).toLocaleTimeString()}`;
-        // Live timer
         if (window.clockInterval) clearInterval(window.clockInterval);
         window.clockInterval = setInterval(() => {
             const start = new Date(activeWorkSession.clocked_in_at);
@@ -560,12 +560,10 @@ async function openJobDetail(jobId) {
     document.getElementById('addStockInlineForm').style.display = 'none';
     document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
 
-    // Try cache first
     let job = getCachedJob(jobId);
     if (job) {
         currentJob = job;
         populateDetailView(job);
-        // Refresh if online
         if (navigator.onLine) {
             try {
                 const { data, error } = await db.from("Jobs").select("*").eq("id", jobId).single();
@@ -588,7 +586,6 @@ async function openJobDetail(jobId) {
         return;
     }
 
-    // Active sessions only if online
     if (navigator.onLine) {
         activeTravelLog = await fetchActiveTravelLog(jobId);
         activeWorkSession = await fetchActiveWorkSession(jobId);
@@ -626,7 +623,6 @@ function populateDetailView(job) {
     document.getElementById("jobDetailTitle").textContent = job.job_name;
     document.getElementById("detailJobName").textContent = job.job_name || "—";
     
-    // Phone clickable
     const phoneSpan = document.getElementById("detailPhone");
     const phone = job.phone || "";
     if (phone) {
@@ -637,7 +633,6 @@ function populateDetailView(job) {
         phoneSpan.style.cursor = "default";
     }
 
-    // Address clickable
     const addressSpan = document.getElementById("detailAddress");
     const addr = job.address || "";
     if (addr) {
@@ -700,7 +695,68 @@ async function loadTimeLogs(jobId) {
     renderTimeLogsPage();
 }
 
-function renderTimeLogsPage() { /* unchanged */ }
+function renderTimeLogsPage() {
+    const timeLogsContainer = document.getElementById("timeLogsContainer");
+    if (!timeLogsContainer) return;
+    if (!allTimeLogs.length) {
+        timeLogsContainer.innerHTML = '<p class="emptyState">No time records yet.</p>';
+        return;
+    }
+    const startIdx = (currentLogsPage - 1) * logsPerPage;
+    const endIdx = startIdx + logsPerPage;
+    const pageLogs = allTimeLogs.slice(startIdx, endIdx);
+    const logsHtml = pageLogs.map(log => {
+        const inTime = new Date(log.clocked_in_at);
+        const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
+        const prefix = log.is_travel ? "🚗 Travel · " : "⏱️ Work · ";
+        let duration = log.duration_seconds;
+        if (!outTime && !log.clocked_out_at && log.is_travel && window.activeTravelLog && window.activeTravelLog.id === log.id) {
+            duration = Math.floor((new Date() - inTime) / 1000);
+        }
+        const formattedDuration = formatDuration(duration);
+        const dateStr = inTime.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const timeRange = `${inTime.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })} → ${outTime ? outTime.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' }) : "—"}`;
+        return `<div class="timeLogRow">
+            <div>
+                <b>${escapeHtml(prefix)}${escapeHtml(log.user_name)}</b><br>
+                <small>${dateStr}</small>
+            </div>
+            <div>${timeRange}</div>
+            <div>${formattedDuration}</div>
+        </div>`;
+    }).join('');
+    const totalPages = Math.ceil(allTimeLogs.length / logsPerPage);
+    const paginationHtml = `
+        <div class="pagination-controls">
+            <button class="pagination-btn prev-page" ${currentLogsPage === 1 ? 'disabled' : ''}>
+                <i class="fa-solid fa-chevron-left"></i> Previous
+            </button>
+            <span class="page-indicator">Page ${currentLogsPage} of ${totalPages}</span>
+            <button class="pagination-btn next-page" ${currentLogsPage === totalPages ? 'disabled' : ''}>
+                Next <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+    `;
+    timeLogsContainer.innerHTML = logsHtml + paginationHtml;
+    const prevBtn = timeLogsContainer.querySelector(".prev-page");
+    const nextBtn = timeLogsContainer.querySelector(".next-page");
+    if (prevBtn && !prevBtn.disabled) {
+        prevBtn.addEventListener("click", () => {
+            if (currentLogsPage > 1) {
+                currentLogsPage--;
+                renderTimeLogsPage();
+            }
+        });
+    }
+    if (nextBtn && !nextBtn.disabled) {
+        nextBtn.addEventListener("click", () => {
+            if (currentLogsPage < totalPages) {
+                currentLogsPage++;
+                renderTimeLogsPage();
+            }
+        });
+    }
+}
 
 // === STOCK INLINE ADD ===
 document.getElementById('addStockInlineBtn').onclick = () => {
@@ -727,33 +783,222 @@ document.getElementById('addStockInlineConfirmBtn').onclick = async () => {
 };
 
 // === EDIT JOB ===
-jobDetailEditToggle.onclick = () => { /* unchanged */ };
-document.getElementById('editAddStockItemBtn').onclick = () => { /* unchanged */ };
+jobDetailEditToggle.onclick = () => {
+    const editing = jobDetailEdit.style.display === "block";
+    jobDetailView.style.display = editing ? "block" : "none";
+    jobDetailEdit.style.display = editing ? "none" : "block";
+    jobDetailEditToggle.innerHTML = editing ? '<i class="fa-solid fa-pen"></i>' : '<i class="fa-solid fa-xmark"></i>';
+    if (!editing) {
+        document.getElementById("editJobName").value = currentJob.job_name || "";
+        document.getElementById("editAddress").value = currentJob.address || "";
+        document.getElementById("editClientName").value = currentJob.client_name || "";
+        document.getElementById("editStartDate").value = currentJob.start_date || "";
+        document.getElementById("editFault").value = currentJob.fault_desc || "";
+        document.getElementById("editPhone").value = currentJob.phone || "";
+        editJobStock = parseStockArray(currentJob.stock || '');
+        renderStockChips('stockChipsEdit', editJobStock, i => editJobStock.splice(i,1));
+    }
+};
+document.getElementById('editAddStockItemBtn').onclick = () => {
+    const inp = document.getElementById('editStockItemInput');
+    if (inp.value.trim()) { editJobStock.push(inp.value.trim()); inp.value = ''; renderStockChips('stockChipsEdit', editJobStock, i => editJobStock.splice(i,1)); }
+};
 saveEditButton.onclick = async () => {
-    /* unchanged but add offline check */
     if (!navigator.onLine) { alert("You must be online to edit a job."); return; }
-    // ... rest of save logic
+    const updates = {
+        job_name: document.getElementById("editJobName").value.trim(),
+        address: document.getElementById("editAddress").value.trim(),
+        client_name: document.getElementById("editClientName").value.trim(),
+        start_date: document.getElementById("editStartDate").value || null,
+        stock: editJobStock.join(', '),
+        fault_desc: document.getElementById("editFault").value.trim(),
+        phone: document.getElementById("editPhone").value.trim()
+    };
+    if (!updates.job_name) { alert("Job name required"); return; }
+    saveEditButton.disabled = true;
+    saveEditButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Saving...';
+    const { data, error } = await db.from("Jobs").update(updates).eq("id", currentJob.id).select().single();
+    saveEditButton.disabled = false;
+    saveEditButton.innerHTML = '<i class="fa-solid fa-check"></i> Save Changes';
+    if (error) { alert("Failed to save."); return; }
+    currentJob = data;
+    cacheJob(data);
+    populateDetailView(data);
+    jobDetailView.style.display = "block";
+    jobDetailEdit.style.display = "none";
+    jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 };
 
 // === COMPLETE JOB ===
 completeJobButton.addEventListener("click", async () => {
     if (!navigator.onLine) { alert("You must be online to complete a job."); return; }
-    // ... rest unchanged
+    if (!confirm("Mark this job as complete? A summary email will be sent first.")) return;
+
+    if (activeWorkSession) {
+        await handleClockOut();
+    }
+    if (activeTravelLog) {
+        const now = new Date();
+        const duration = Math.floor((now - new Date(activeTravelLog.clocked_in_at)) / 1000);
+        await db.from("time_logs").update({
+            clocked_out_at: now.toISOString(),
+            duration_seconds: duration
+        }).eq("id", activeTravelLog.id);
+        activeTravelLog = null;
+        await updateTravelUI();
+        await loadTimeLogs(currentJob.id);
+    }
+
+    const { data: logs } = await db.from("time_logs")
+        .select("*")
+        .eq("job_id", currentJob.id)
+        .order("clocked_in_at", { ascending: true });
+    const totalSeconds = logs?.reduce((sum, log) => sum + (log.duration_seconds || 0), 0) || 0;
+    const totalHours = (totalSeconds / 3600).toFixed(2);
+
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-NZ", { day:"numeric", month:"short" }) : "—";
+    const fmtTime = (d) => new Date(d).toLocaleTimeString("en-NZ", { hour:"2-digit", minute:"2-digit" });
+    const fmtDur = (s) => formatDuration(s);
+    const tableHtml = logs && logs.length > 0
+        ? `<table border="0" cellpadding="8" style="border-collapse:collapse; width:100%;">
+            <thead><tr style="background:#f0f0f0;"><th>Type</th><th>User</th><th>Date</th><th>In</th><th>Out</th><th>Duration</th></tr></thead>
+            <tbody>
+                ${logs.map(log => `<tr>
+                    <td>${log.is_travel ? "🚗 Travel" : "Work"}</td>
+                    <td>${escapeHtml(log.user_name)}</td>
+                    <td>${fmtDate(log.clocked_in_at)}</td>
+                    <td>${fmtTime(log.clocked_in_at)}</td>
+                    <td>${log.clocked_out_at ? fmtTime(log.clocked_out_at) : "—"}</td>
+                    <td>${fmtDur(log.duration_seconds || 0)}</td>
+                </tr>`).join("")}
+            </tbody>
+        </table>`
+        : "No time sessions recorded.";
+
+    const templateParams = {
+        to_email: "ashleywork02@gmail.com",
+        job_name: currentJob.job_name || "—",
+        client_name: currentJob.client_name || "—",
+        address: currentJob.address || "—",
+        phone: currentJob.phone || "—",
+        start_date: currentJob.start_date || "—",
+        stock: currentJob.stock || "—",
+        fault_desc: currentJob.fault_desc || "—",
+        total_time: `${totalHours} hours (${totalSeconds} sec)`,
+        time_sessions_table: tableHtml
+    };
+
+    completeJobButton.disabled = true;
+    completeJobButton.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Sending email...';
+
+    try {
+        const response = await emailjs.send(
+            "service_nlma6da",
+            "template_y2ineka",
+            templateParams
+        );
+        if (response.status === 200) {
+            await db.from("Jobs").update({ status: "completed" }).eq("id", currentJob.id);
+            alert('✅ Job completed and summary email sent.');
+            loadJobs();
+            closeJobDetail();
+        } else {
+            throw new Error('EmailJS returned unexpected status');
+        }
+    } catch (err) {
+        console.error("Email error:", err);
+        alert(`❌ Job NOT completed. Email failed: ${err.message || "Unknown error"}`);
+    } finally {
+        completeJobButton.disabled = false;
+        completeJobButton.innerHTML = '<i class="fa-solid fa-flag-checkered"></i> Complete Job';
+    }
 });
 
 // === UNCOMPLETE JOB ===
 uncompleteJobButton.addEventListener("click", async () => {
     if (!navigator.onLine) { alert("You must be online to uncomplete a job."); return; }
-    // ... rest unchanged
+    if (!confirm("Mark this job as active again?")) return;
+    await db.from("Jobs").update({ status: "active" }).eq("id", currentJob.id);
+    loadJobs();
+    closeJobDetail();
 });
 
-// === PHOTOS (unchanged) ===
-// ... all photo functions remain as before
+// === PHOTOS ===
+function renderPhotoGrid() {
+    photoGrid.innerHTML = '';
+    capturedPhotos.forEach((src, idx) => {
+        const div = document.createElement('div'); div.className = 'photoThumb';
+        const img = document.createElement('img'); img.src = src;
+        const remove = document.createElement('div'); remove.className = 'removePhoto'; remove.innerHTML = '<i class="fa-solid fa-times"></i>';
+        remove.onclick = () => { capturedPhotos.splice(idx,1); renderPhotoGrid(); sendPhotosEmailBtn.style.display = capturedPhotos.length ? "inline-flex" : "none"; };
+        div.appendChild(img); div.appendChild(remove); photoGrid.appendChild(div);
+    });
+    sendPhotosEmailBtn.style.display = capturedPhotos.length ? "inline-flex" : "none";
+}
+
+takePhotoBtn.addEventListener("click", () => {
+    if (capturedPhotos.length >= 3) { alert("Maximum 3 photos."); return; }
+    const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => { capturedPhotos.push(ev.target.result); renderPhotoGrid(); };
+            reader.readAsDataURL(file);
+        }
+    };
+    input.click();
+});
+
+sendPhotosEmailBtn.addEventListener("click", async () => {
+    if (!capturedPhotos.length) return;
+    const files = await Promise.all(capturedPhotos.map(async (dataUrl, idx) => {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        return new File([blob], `job_photo_${idx + 1}.jpg`, { type: blob.type });
+    }));
+    if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
+        try {
+            await navigator.share({
+                title: `${currentJob.job_name}`,
+                text: `Job: ${currentJob.job_name}\nClient: ${currentJob.client_name}\nAddress: ${currentJob.address}`,
+                files: files
+            });
+        } catch (err) {
+            if (err.name !== "AbortError") {
+                console.error("Share failed:", err);
+                alert("Sharing failed. Please try again.");
+            }
+        }
+    } else {
+        alert("Your browser does not support sharing images directly.\nPlease use a mobile device (Android/iOS) or update your browser.");
+    }
+});
 
 // === SERVICE WORKER & UPDATES ===
-async function registerSW() { /* unchanged */ }
+async function registerSW() {
+    if (!('serviceWorker' in navigator)) return;
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    console.log('SW registered');
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'UPDATE_AVAILABLE') {
+            showUpdateBanner();
+        }
+    });
+}
 const manualUpdateBtn = document.getElementById('manual-update-btn');
-if (manualUpdateBtn) { /* unchanged */ }
+if (manualUpdateBtn) {
+    manualUpdateBtn.addEventListener('click', async () => {
+        if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+                await registration.unregister();
+                console.log('Service worker unregistered');
+            }
+        }
+        window.location.reload(true);
+    });
+}
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', registerSW);
 } else {

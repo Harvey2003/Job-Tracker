@@ -101,7 +101,23 @@
                     </div>
                 </div>
             </div>
-            <p id="sectionTitle">Active Jobs</p>
+
+            <!-- TAB STRIP -->
+            <div id="tabStrip">
+                <div class="tabPill active" data-status="active">
+                    <span class="tabLabel">Active</span>
+                    <span class="tabBadge" id="activeCount">0</span>
+                </div>
+                <div class="tabPill" data-status="upcoming">
+                    <span class="tabLabel">Upcoming</span>
+                    <span class="tabBadge" id="upcomingCount">0</span>
+                </div>
+                <div class="tabPill" data-status="completed">
+                    <span class="tabLabel">Completed</span>
+                    <span class="tabBadge" id="completedCount">0</span>
+                </div>
+            </div>
+
             <div id="jobCardsContainer"></div>
         </div>
 
