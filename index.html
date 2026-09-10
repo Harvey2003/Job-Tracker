@@ -11,23 +11,29 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="JobTrack" />
         <meta name="application-name" content="JobTrack" />
-        <meta name="theme-color" content="#111827" />
+        <meta name="theme-color" content="#0b1120" />
         <meta name="app-version" content="alpha-1f:20260611T1045Z">
         <title>JobTrack</title>
         <link rel="manifest" href="manifest.json" />
         <link rel="apple-touch-icon" href="icon-192.png" />
         <link rel="stylesheet" href="style.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </head>
     <body>
         <!-- LOGIN SCREEN -->
         <div id="loginScreen">
             <div id="loginCard">
-                <p id="loginCompany">
-                    <span style="color:#dc2626;">Electric</span><span style="color:#16a34a;">M8</span>
-                </p>
-                <p id="loginTitle">Sign in to JobTrack</p>
-                <p id="loginSub">Use your account credentials to continue</p>
+                <div id="loginBrand">
+                    <div id="loginLogo">
+                        <i class="fa-solid fa-bolt" style="color:#f59e0b; font-size:1.6rem;"></i>
+                    </div>
+                    <p id="loginCompany">
+                        <span style="color:#f59e0b;">Electric</span><span style="color:#ffffff;">M8</span>
+                    </p>
+                </div>
+                <p id="loginTitle">Welcome Back</p>
+                <p id="loginSub">Sign in to manage your jobs</p>
                 <div class="formGroup">
                     <label class="formHeader">Email</label>
                     <input type="email" id="loginEmail" class="newJobInput" placeholder="you@example.com" />
@@ -45,10 +51,12 @@
 
         <!-- TOP NAV -->
         <div id="topNavContainer">
-            <span id="companyName">
-                <i class="fa-solid fa-bolt" style="color:#f59e0b; margin-right:4px;"></i>
-                <span style="color:#dc2626;">Electric</span><span style="color:#16a34a;">M8</span>
-            </span>
+            <div id="brandWrapper">
+                <i class="fa-solid fa-bolt" style="color:#f59e0b; font-size:1.1rem;"></i>
+                <span id="companyName">
+                    <span style="color:#f59e0b;">Electric</span><span style="color:#ffffff;">M8</span>
+                </span>
+            </div>
             <div id="welcomeMessage">
                 <p id="welcomeTitle">Welcome back</p>
                 <p id="welcomeSub">...</p>
@@ -61,7 +69,20 @@
         <!-- SIDEBAR -->
         <div id="navOverlay"></div>
         <div id="navBar">
-            <p id="navHeader">Menu</p>
+            <div id="navBrand">
+                <i class="fa-solid fa-bolt" style="color:#f59e0b; font-size:1.4rem;"></i>
+                <span style="font-weight:800; font-size:1.1rem; color:#ffffff;">
+                    <span style="color:#f59e0b;">Electric</span><span style="color:#ffffff;">M8</span>
+                </span>
+            </div>
+            <div id="navUser">
+                <div id="navAvatar"><i class="fa-solid fa-user"></i></div>
+                <div>
+                    <p id="navUserName">User</p>
+                    <p id="navUserEmail">user@example.com</p>
+                </div>
+            </div>
+            <div id="navDivider"></div>
             <div class="navItem" id="jobsSection">
                 <i class="fa-solid fa-briefcase navIcon"></i>
                 <span>Jobs</span>
@@ -109,7 +130,7 @@
         <div id="newJobForm">
             <div id="formCard">
                 <div id="formTitleRow">
-                    <p id="formTitle">Create New Job</p>
+                    <p id="formTitle"><i class="fa-solid fa-plus-circle" style="color:#f59e0b; margin-right:10px;"></i>Create New Job</p>
                     <div id="formClose"><i class="fa-solid fa-xmark"></i></div>
                 </div>
                 <div class="formGroup">
@@ -186,8 +207,8 @@
                 <!-- Photos Section -->
                 <div id="photosSection" class="detailCard">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <span class="detailLabel">Job Photos (max 3)</span>
-                        <button id="takePhotoBtn" class="stockAddBtn" style="padding: 8px 12px;">
+                        <span class="detailLabel"><i class="fa-solid fa-camera" style="margin-right:6px;"></i>Job Photos (max 3)</span>
+                        <button id="takePhotoBtn" class="stockAddBtn" style="padding: 8px 14px; font-size:0.8rem;">
                             <i class="fa-solid fa-camera"></i> Take Photo
                         </button>
                     </div>
@@ -200,31 +221,31 @@
                 <!-- Job Info (view mode) -->
                 <div id="jobDetailView" class="detailCard">
                     <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-regular fa-file-lines" style="margin-right:6px;"></i>Job Name</span>
+                        <span class="detailLabel"><i class="fa-regular fa-file-lines"></i>Job Name</span>
                         <span class="detailValue" id="detailJobName"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-regular fa-clipboard" style="margin-right:6px;"></i>Job Description</span>
+                        <span class="detailLabel"><i class="fa-regular fa-clipboard"></i>Job Description</span>
                         <span class="detailValue" id="detailFault"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-solid fa-location-dot" style="margin-right:6px;"></i>Address</span>
+                        <span class="detailLabel"><i class="fa-solid fa-location-dot"></i>Address</span>
                         <span class="detailValue" id="detailAddress"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-regular fa-user" style="margin-right:6px;"></i>Client</span>
+                        <span class="detailLabel"><i class="fa-regular fa-user"></i>Client</span>
                         <span class="detailValue" id="detailClientName"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-solid fa-phone" style="margin-right:6px;"></i>Contact Phone</span>
+                        <span class="detailLabel"><i class="fa-solid fa-phone"></i>Contact Phone</span>
                         <span class="detailValue" id="detailPhone"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-regular fa-calendar" style="margin-right:6px;"></i>Start Date</span>
+                        <span class="detailLabel"><i class="fa-regular fa-calendar"></i>Start Date</span>
                         <span class="detailValue" id="detailStartDate"></span>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-solid fa-boxes-stacked" style="margin-right:6px;"></i>Stock</span>
+                        <span class="detailLabel"><i class="fa-solid fa-boxes-stacked"></i>Stock</span>
                         <div class="detailValue" id="detailStock">
                             <div id="stockChipsView" class="stockChips"></div>
                             <button class="addStockInlineBtn" id="addStockInlineBtn">
@@ -240,7 +261,7 @@
                         </div>
                     </div>
                     <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-regular fa-circle-check" style="margin-right:6px;"></i>Status</span>
+                        <span class="detailLabel"><i class="fa-regular fa-circle-check"></i>Status</span>
                         <span class="detailValue" id="detailStatus"></span>
                     </div>
                 </div>
@@ -290,7 +311,7 @@
 
                 <!-- Time Logs -->
                 <div id="timeLogsSection" class="detailCard">
-                    <p class="sectionSubTitle">Time & Travel Logs</p>
+                    <p class="sectionSubTitle"><i class="fa-regular fa-clock" style="margin-right:8px;"></i>Time & Travel Logs</p>
                     <div id="timeLogsContainer"></div>
                 </div>
 
