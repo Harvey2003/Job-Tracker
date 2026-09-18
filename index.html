@@ -111,35 +111,18 @@
                 </button>
             </div>
 
-            <!-- TABS -->
-            <div id="jobTabs">
-                <button class="jobTabBtn active" data-tab="active">
-                    <i class="fa-solid fa-play-circle"></i> Active
-                </button>
-                <button class="jobTabBtn" data-tab="upcoming">
-                    <i class="fa-solid fa-calendar-alt"></i> Upcoming
-                </button>
-                <button class="jobTabBtn" data-tab="completed">
-                    <i class="fa-solid fa-check-circle"></i> Completed
-                </button>
-            </div>
-
-            <!-- ADD JOB CARD -->
-            <div class="jobCard addJobCard" id="addJob">
-                <div class="jobCardInner">
-                    <div class="jobIcon addJobIcon">
+            <div class="jobCard" id="addJob">
+                <div id="addJobInner">
+                    <div id="addJobIcon">
                         <i class="fa-solid fa-plus"></i>
                     </div>
-                    <div class="jobInfo">
-                        <h3 class="jobName">New Job</h3>
-                        <div class="jobMeta">
-                            <span><i class="fa-solid fa-plus-circle"></i> Tap to create a new job</span>
-                        </div>
+                    <div id="addJobText">
+                        <p id="addJobTitle">New Job</p>
+                        <p id="addJobSub">Tap to create a new job</p>
                     </div>
                 </div>
             </div>
-
-            <!-- JOB CARDS CONTAINER -->
+            <p id="sectionTitle">Active Jobs</p>
             <div id="jobCardsContainer"></div>
         </div>
 
@@ -207,98 +190,35 @@
                     </div>
                 </div>
 
-                <!-- Hero Card: Title, status, client, date -->
-                <div id="jobHeroCard" class="jobHeroCard">
-                    <div class="jobHeroTop">
-                        <div id="jobHeroIcon" class="jobHeroIcon">
-                            <i class="fa-solid fa-briefcase"></i>
-                        </div>
-                        <div class="jobHeroMeta">
-                            <h2 id="jobHeroName">Job Name</h2>
-                            <p id="jobHeroClient">Client</p>
-                        </div>
-                        <div id="jobHeroStatus" class="statusBadge badge-active">Active</div>
-                    </div>
-                    <div class="jobHeroStats">
-                        <div class="jobHeroStat">
-                            <i class="fa-regular fa-calendar"></i>
-                            <div>
-                                <span class="statLabel">Start Date</span>
-                                <span class="statValue" id="jobHeroDate">—</span>
-                            </div>
-                        </div>
-                        <div class="jobHeroStat">
-                            <i class="fa-regular fa-clock"></i>
-                            <div>
-                                <span class="statLabel">Total Time</span>
-                                <span class="statValue" id="jobHeroTotalTime">0m</span>
-                            </div>
-                        </div>
-                        <div class="jobHeroStat">
-                            <i class="fa-solid fa-boxes-stacked"></i>
-                            <div>
-                                <span class="statLabel">Stock Items</span>
-                                <span class="statValue" id="jobHeroStockCount">0</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Actions Row -->
-                <div class="quickActionsRow">
-                    <button class="quickActionBtn" id="quickCallBtn" title="Call Client">
-                        <i class="fa-solid fa-phone"></i>
-                        <span>Call</span>
-                    </button>
-                    <button class="quickActionBtn" id="quickMapBtn" title="Open Map">
-                        <i class="fa-solid fa-location-dot"></i>
-                        <span>Navigate</span>
-                    </button>
-                    <button class="quickActionBtn" id="quickShareBtn" title="Share Job">
-                        <i class="fa-solid fa-share-nodes"></i>
-                        <span>Share</span>
-                    </button>
-                </div>
-
                 <!-- Travel & Clock Section -->
                 <div id="clockSection">
-                    <div class="clockSectionHeader">
-                        <i class="fa-solid fa-stopwatch"></i>
-                        <span>Time Tracking</span>
-                    </div>
-                    <div class="clockGrid">
-                        <button id="travelToggleBtn" class="actionBtn travelBtn">
-                            <i class="fa-solid fa-car"></i> <span id="travelToggleText">Start Travel</span>
-                        </button>
-                        <button id="clockButton" class="actionBtn clockBtn">
-                            <i class="fa-solid fa-clock"></i> <span id="clockButtonText">Clock In</span>
-                        </button>
-                    </div>
+                    <button id="travelToggleBtn" class="actionBtn travelBtn">
+                        <i class="fa-solid fa-car"></i> <span id="travelToggleText">Start Travel</span>
+                    </button>
                     <div id="travelStatus" class="actionStatus"></div>
+                    <div class="divider"></div>
+                    <button id="clockButton" class="actionBtn clockBtn">
+                        <i class="fa-solid fa-clock"></i> <span id="clockButtonText">Clock In</span>
+                    </button>
                     <p id="clockStatus" class="actionStatus"></p>
                     <p id="totalTimeDisplay" class="totalTime"></p>
                 </div>
 
                 <!-- Photos Section -->
                 <div id="photosSection" class="detailCard">
-                    <div class="sectionHeaderRow">
-                        <span class="detailLabel"><i class="fa-solid fa-camera" style="margin-right:6px;"></i>Job Photos</span>
-                        <span class="photoCounter" id="photoCounter">0 / 3</span>
-                    </div>
-                    <div id="photoGrid" class="photoGrid"></div>
-                    <div class="photoActions">
-                        <button id="takePhotoBtn" class="stockAddBtn photoBtn">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span class="detailLabel"><i class="fa-solid fa-camera" style="margin-right:6px;"></i>Job Photos (max 3)</span>
+                        <button id="takePhotoBtn" class="stockAddBtn" style="padding: 8px 14px; font-size:0.8rem;">
                             <i class="fa-solid fa-camera"></i> Take Photo
                         </button>
-                        <button id="sendPhotosEmailBtn" class="sendPhotosBtn" style="display: none;">
-                            <i class="fa-regular fa-envelope"></i> Send via Email
-                        </button>
                     </div>
+                    <div id="photoGrid" class="photoGrid"></div>
+                    <button id="sendPhotosEmailBtn" class="sendPhotosBtn" style="display: none;">
+                        <i class="fa-regular fa-envelope"></i> Send Photos via Email
+                    </button>
                 </div>
-
-                <!-- ============================================ -->
-                <!-- JOB INFO - VIEW MODE (original rows restored) -->
-                <!-- ============================================ -->
+                
+                <!-- Job Info (view mode) -->
                 <div id="jobDetailView" class="detailCard">
                     <div class="detailRow">
                         <span class="detailLabel"><i class="fa-regular fa-file-lines"></i>Job Name</span>
@@ -328,7 +248,6 @@
                         <span class="detailLabel"><i class="fa-solid fa-boxes-stacked"></i>Stock</span>
                         <div class="detailValue" id="detailStock">
                             <div id="stockChipsView" class="stockChips"></div>
-                            <p class="emptyStockMsg" id="emptyStockMsg" style="display:none;">No materials listed yet.</p>
                             <button class="addStockInlineBtn" id="addStockInlineBtn">
                                 <i class="fa-solid fa-plus"></i> Add Stock
                             </button>
