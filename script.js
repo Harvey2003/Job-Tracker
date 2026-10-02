@@ -595,6 +595,7 @@ function closeJobDetail() {
     activeWorkSession = null;
     activeTravelLog = null;
     closeTimeLogEditModal();
+    closeUserTimesModal();
 }
 jobDetailBack.onclick = closeJobDetail;
 
@@ -1206,6 +1207,407 @@ sendPhotosEmailBtn.addEventListener("click", async () => {
     }
 });
 
+// ==================== USER TIMES REPORT (per-user, job + date filtered) ====================
+
+// State for the modal
+let userTimesRawLogs = [];          // logs for current scope (job + user), unfiltered by date
+let userTimesFilteredLogs = [];     // after date-range filter
+let userTimesRange = "all";         // 'all' | '7d' | '30d' | '365d'
+let userTimesJobScope = "current";  // 'current' | 'all' | 'pick'
+let userTimesPickedJobId = null;    // set when userTimesJobScope === 'pick'
+let userTimesPage = 1;
+const userTimesPerPage = 10;
+
+// Cache of the job list for the picker (built from localStorage cache)
+let userTimesJobCache = [];
+
+// --- Helpers --------------------------------------------------------------
+
+function rangeToMs(range) {
+    if (range === "7d")   return 7   * 24 * 60 * 60 * 1000;
+    if (range === "30d")  return 30  * 24 * 60 * 60 * 1000;
+    if (range === "365d") return 365 * 24 * 60 * 60 * 1000;
+    return null;
+}
+
+function displayNameForUser() {
+    if (!currentUser) return "User";
+    return currentUser.user_metadata?.display_name
+        || (currentUser.email ? currentUser.email.split("@")[0] : "User");
+}
+
+function findJobById(jobId) {
+    if (!jobId) return null;
+    return userTimesJobCache.find(j => String(j.id) === String(jobId)) || null;
+}
+
+function currentJobLabel() {
+    if (!currentJob) return "This job";
+    return currentJob.job_name || "This job";
+}
+
+function scopeLabel() {
+    if (userTimesJobScope === "all") return "All jobs";
+    if (userTimesJobScope === "pick") {
+        const j = findJobById(userTimesPickedJobId);
+        return j ? (j.job_name || "Selected job") : "Selected job";
+    }
+    return currentJobLabel();
+}
+
+// Build a map of jobId -> job_name for the row rendering.
+function buildJobNameMap() {
+    const map = {};
+    userTimesJobCache.forEach(j => { map[String(j.id)] = j.job_name || "Untitled"; });
+    return map;
+}
+
+// --- Job picker -----------------------------------------------------------
+
+function refreshJobCache() {
+    // Prefer cached jobs from localStorage; fall back to a network fetch
+    // if we've never populated it.
+    const cached = getCachedAllJobs();
+    if (cached && cached.length) {
+        userTimesJobCache = cached.slice();
+        return;
+    }
+    // Will be filled by the fetch in openUserTimesModal if empty.
+}
+
+function renderJobPickerList() {
+    const listEl = document.getElementById("userTimesJobPickerList");
+    const searchEl = document.getElementById("userTimesJobSearch");
+    if (!listEl) return;
+
+    const term = (searchEl?.value || "").trim().toLowerCase();
+    const jobs = userTimesJobCache.filter(j =>
+        !term || (j.job_name || "").toLowerCase().includes(term)
+    );
+
+    if (!jobs.length) {
+        listEl.innerHTML = `<div class="userTimesJobPickerEmpty">${
+            userTimesJobCache.length ? "No matching jobs." : "No jobs available."
+        }</div>`;
+        return;
+    }
+
+    listEl.innerHTML = jobs.map(job => {
+        const isActive = userTimesJobScope === "pick"
+            && String(userTimesPickedJobId) === String(job.id);
+        const client = job.client_name ? ` · ${job.client_name}` : "";
+        return `
+            <button class="userTimesJobPickerItem ${isActive ? 'is-active' : ''}"
+                    data-job-id="${job.id}">
+                <span class="userTimesJobPickerItemName">${escapeHtml(job.job_name || "Untitled")}</span>
+                <span class="userTimesJobPickerItemMeta">${escapeHtml(client.replace(/^ · /, "")) || ""}</span>
+            </button>
+        `;
+    }).join("");
+
+    listEl.querySelectorAll(".userTimesJobPickerItem").forEach(btn => {
+        btn.addEventListener("click", () => {
+            userTimesPickedJobId = btn.dataset.jobId;
+            userTimesJobScope = "pick";
+            updateJobTabsUI();
+            closeJobPicker();
+            fetchAndRenderUserTimes();
+        });
+    });
+}
+
+function openJobPicker() {
+    const picker = document.getElementById("userTimesJobPicker");
+    if (!picker) return;
+    refreshJobCache();
+    picker.classList.add("active");
+    const searchEl = document.getElementById("userTimesJobSearch");
+    if (searchEl) searchEl.value = "";
+    renderJobPickerList();
+    setTimeout(() => searchEl?.focus(), 50);
+}
+
+function closeJobPicker() {
+    const picker = document.getElementById("userTimesJobPicker");
+    if (picker) picker.classList.remove("active");
+}
+
+function updateJobTabsUI() {
+    const currentTab = document.querySelector('#userTimesJobTabs .userTimesJobTab[data-job-scope="current"]');
+    const allTab     = document.querySelector('#userTimesJobTabs .userTimesJobTab[data-job-scope="all"]');
+    const pickTab    = document.getElementById("userTimesJobPickTab");
+
+    [currentTab, allTab, pickTab].forEach(t => t && t.classList.remove("active", "is-picked"));
+
+    if (userTimesJobScope === "current") {
+        currentTab?.classList.add("active");
+        if (pickTab) pickTab.innerHTML = `<i class="fa-solid fa-list"></i> Choose job…`;
+    } else if (userTimesJobScope === "all") {
+        allTab?.classList.add("active");
+        if (pickTab) pickTab.innerHTML = `<i class="fa-solid fa-list"></i> Choose job…`;
+    } else if (userTimesJobScope === "pick") {
+        const j = findJobById(userTimesPickedJobId);
+        const label = j ? (j.job_name || "Selected job") : "Selected job";
+        if (pickTab) {
+            pickTab.classList.add("is-picked");
+            pickTab.innerHTML = `<i class="fa-solid fa-check"></i> <span>${escapeHtml(label)}</span>`;
+        }
+    }
+}
+
+// --- Data fetching --------------------------------------------------------
+
+async function fetchAndRenderUserTimes() {
+    if (!currentUser) return;
+
+    const listEl = document.getElementById("userTimesList");
+    const paginationEl = document.getElementById("userTimesPagination");
+    listEl.innerHTML = '<p class="emptyState">Loading...</p>';
+    paginationEl.innerHTML = "";
+
+    // Build the query
+    let query = db.from("time_logs")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("clocked_in_at", { ascending: false });
+
+    if (userTimesJobScope === "current") {
+        if (!currentJob) return;
+        query = query.eq("job_id", currentJob.id);
+    } else if (userTimesJobScope === "pick") {
+        if (!userTimesPickedJobId) return;
+        query = query.eq("job_id", userTimesPickedJobId);
+    }
+    // 'all' → no job_id filter
+
+    const { data, error } = await query;
+
+    if (error) {
+        listEl.innerHTML = '<p class="emptyState">Failed to load your times.</p>';
+        return;
+    }
+
+    userTimesRawLogs = data || [];
+    applyUserTimesRange();
+}
+
+// --- Filtering + rendering ------------------------------------------------
+
+function applyUserTimesRange() {
+    const now = Date.now();
+    const windowMs = rangeToMs(userTimesRange);
+
+    if (windowMs === null) {
+        userTimesFilteredLogs = [...userTimesRawLogs];
+    } else {
+        const cutoff = now - windowMs;
+        userTimesFilteredLogs = userTimesRawLogs.filter(log => {
+            if (!log.clocked_in_at) return false;
+            return new Date(log.clocked_in_at).getTime() >= cutoff;
+        });
+    }
+
+    userTimesPage = 1;
+    renderUserTimesModal();
+}
+
+function renderUserTimesModal() {
+    const listEl = document.getElementById("userTimesList");
+    const paginationEl = document.getElementById("userTimesPagination");
+    const totalWorkEl = document.getElementById("userTimesTotalWork");
+    const totalTravelEl = document.getElementById("userTimesTotalTravel");
+    const subtitleEl = document.getElementById("userTimesSubtitle");
+
+    // Subtitle: user + scope + (implicit date range in tabs)
+    subtitleEl.innerHTML =
+        `Logs for <b>${escapeHtml(displayNameForUser())}</b> · <b>${escapeHtml(scopeLabel())}</b>`;
+
+    // Totals over the filtered set
+    let workSec = 0;
+    let travelSec = 0;
+    userTimesFilteredLogs.forEach(log => {
+        const sec = computeDurationSeconds(log);
+        if (log.is_travel) travelSec += sec;
+        else workSec += sec;
+    });
+    totalWorkEl.textContent = formatDuration(workSec);
+    totalTravelEl.textContent = formatDuration(travelSec);
+
+    if (!userTimesFilteredLogs.length) {
+        const emptyMsg = userTimesRange === "all"
+            ? "No logs in this scope."
+            : "No logs in this date range.";
+        listEl.innerHTML = `<p class="emptyState">${emptyMsg}</p>`;
+        paginationEl.innerHTML = "";
+        return;
+    }
+
+    const totalPages = Math.ceil(userTimesFilteredLogs.length / userTimesPerPage);
+    if (userTimesPage > totalPages) userTimesPage = totalPages;
+    if (userTimesPage < 1) userTimesPage = 1;
+
+    const start = (userTimesPage - 1) * userTimesPerPage;
+    const pageLogs = userTimesFilteredLogs.slice(start, start + userTimesPerPage);
+
+    const jobNameMap = buildJobNameMap();
+    const showJobName = userTimesJobScope !== "current";
+
+    listEl.innerHTML = pageLogs.map(log => buildUserTimeRow(log, jobNameMap, showJobName)).join("");
+
+    if (totalPages > 1) {
+        paginationEl.innerHTML = `
+            <div class="pagination-controls">
+                <button class="pagination-btn" id="userTimesPrevBtn" ${userTimesPage === 1 ? 'disabled' : ''}>
+                    <i class="fa-solid fa-chevron-left"></i> Prev
+                </button>
+                <span class="page-indicator">Page ${userTimesPage} of ${totalPages}</span>
+                <button class="pagination-btn" id="userTimesNextBtn" ${userTimesPage === totalPages ? 'disabled' : ''}>
+                    Next <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        `;
+        document.getElementById("userTimesPrevBtn")?.addEventListener("click", () => {
+            if (userTimesPage > 1) { userTimesPage--; renderUserTimesModal(); }
+        });
+        document.getElementById("userTimesNextBtn")?.addEventListener("click", () => {
+            if (userTimesPage < totalPages) { userTimesPage++; renderUserTimesModal(); }
+        });
+    } else {
+        paginationEl.innerHTML = "";
+    }
+}
+
+function buildUserTimeRow(log, jobNameMap, showJobName) {
+    const inTime = new Date(log.clocked_in_at);
+    const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
+    const active = !log.clocked_out_at;
+
+    const dateStr = inTime.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const inStr   = inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const outStr  = outTime ? outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
+
+    const duration = computeDurationSeconds(log);
+    const durStr = formatDuration(duration);
+
+    const typeClass = log.is_travel ? 'travel' : 'work';
+    const typeIcon  = log.is_travel ? 'fa-car' : 'fa-clock';
+    const typeLabel = log.is_travel ? 'Travel' : 'Work';
+
+    const jobName = showJobName
+        ? (jobNameMap[String(log.job_id)] || "Unknown job")
+        : null;
+
+    return `
+        <div class="timelog-row" data-log-id="${log.id}">
+            <div class="timelog-row top">
+                <div class="timelog-typeBadge ${typeClass}" title="${typeLabel}">
+                    <i class="fa-solid ${typeIcon}"></i>
+                </div>
+                <div class="timelog-headline">
+                    <span class="timelog-user">${escapeHtml(typeLabel)}</span>
+                    <span class="timelog-date">${escapeHtml(dateStr)}</span>
+                    ${jobName ? `<span class="timelog-jobname"><i class="fa-solid fa-briefcase"></i>${escapeHtml(jobName)}</span>` : ""}
+                </div>
+                <span class="timelog-durationPill ${active ? 'live' : ''}">${active ? '● ' : ''}${durStr}</span>
+            </div>
+            <div class="timelog-times">
+                <span class="timelog-time"><i class="fa-solid fa-arrow-right-to-bracket"></i>${escapeHtml(inStr)}</span>
+                <i class="fa-solid fa-arrow-right timelog-arrow"></i>
+                <span class="timelog-time ${active ? 'active' : ''}">
+                    <i class="fa-solid ${active ? 'fa-spinner fa-pulse' : 'fa-arrow-right-from-bracket'}"></i>
+                    ${outStr ? escapeHtml(outStr) : 'Active'}
+                </span>
+            </div>
+        </div>
+    `;
+}
+
+// --- Modal open/close -----------------------------------------------------
+
+async function openUserTimesModal() {
+    if (!currentJob || !currentUser) return;
+
+    // Preload the job list for the picker (localStorage cache first).
+    userTimesJobCache = getCachedAllJobs();
+    if (!userTimesJobCache.length) {
+        // Nothing cached — fetch once. Won't block the UI too long.
+        try {
+            const { data } = await db.from("Jobs").select("id, job_name, client_name").order("created_at", { ascending: false });
+            userTimesJobCache = data || [];
+        } catch (e) { userTimesJobCache = []; }
+    }
+
+    // Reset state
+    userTimesRange = "all";
+    userTimesJobScope = "current";
+    userTimesPickedJobId = null;
+    userTimesPage = 1;
+
+    document.querySelectorAll("#userTimesRangeTabs .userTimesRangeTab").forEach(t => {
+        t.classList.toggle("active", t.dataset.range === "all");
+    });
+    updateJobTabsUI();
+    closeJobPicker();
+
+    document.getElementById("userTimesModal").classList.add("active");
+
+    await fetchAndRenderUserTimes();
+}
+
+function closeUserTimesModal() {
+    const modal = document.getElementById("userTimesModal");
+    if (modal) modal.classList.remove("active");
+    closeJobPicker();
+}
+
+// --- Wiring ---------------------------------------------------------------
+
+document.getElementById("openUserTimesBtn")?.addEventListener("click", openUserTimesModal);
+
+document.getElementById("userTimesClose")?.addEventListener("click", closeUserTimesModal);
+document.getElementById("userTimesModal")?.addEventListener("click", (e) => {
+    if (e.target === document.getElementById("userTimesModal")) closeUserTimesModal();
+});
+
+// Job scope tabs
+document.querySelectorAll("#userTimesJobTabs .userTimesJobTab").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const scope = btn.dataset.jobScope;
+        if (scope === "pick") {
+            // Tapping "Choose job…" opens the picker. If already picking,
+            // it toggles the picker closed.
+            if (userTimesJobScope === "pick") {
+                closeJobPicker();
+                return;
+            }
+            openJobPicker();
+            return;
+        }
+        // 'current' or 'all'
+        userTimesJobScope = scope;
+        userTimesPickedJobId = null;
+        updateJobTabsUI();
+        closeJobPicker();
+        fetchAndRenderUserTimes();
+    });
+});
+
+// Job picker — close button
+document.getElementById("userTimesJobPickerClose")?.addEventListener("click", closeJobPicker);
+
+// Job picker — live search
+document.getElementById("userTimesJobSearch")?.addEventListener("input", renderJobPickerList);
+
+// Date range tabs
+document.querySelectorAll("#userTimesRangeTabs .userTimesRangeTab").forEach(btn => {
+    btn.addEventListener("click", () => {
+        userTimesRange = btn.dataset.range;
+        document.querySelectorAll("#userTimesRangeTabs .userTimesRangeTab").forEach(b => {
+            b.classList.toggle("active", b === btn);
+        });
+        applyUserTimesRange();
+    });
+});
 
 // ==================== SERVICE WORKER & UPDATES ====================
 // Deterministic update system. See build.js / sw.js / update-check.js.

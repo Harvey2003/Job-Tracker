@@ -12,11 +12,11 @@
         <meta name="apple-mobile-web-app-title" content="JobTrack" />
         <meta name="application-name" content="JobTrack" />
         <meta name="theme-color" content="#0b1120" />
-        <meta name="app-version" content="20261002062746">
+        <meta name="app-version" content="20261002064501">
         <title>JobTrack</title>
         <link rel="manifest" href="manifest.json" />
         <link rel="apple-touch-icon" href="icon-192.png" />
-        <link rel="stylesheet" href="style.9a87436bd8.css" />
+        <link rel="stylesheet" href="style.0a034e14a4.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </head>
@@ -210,7 +210,7 @@
                     </div>
                 </div>
 
-                <!-- Hero card: job name + status + client -->
+                <!-- Hero card -->
                 <div id="jobHeroCard">
                     <div id="jobHeroTop">
                         <p id="jobHeroName">Job Name</p>
@@ -228,7 +228,7 @@
                     </div>
                 </div>
 
-                <!-- Travel & Clock Section (visually unchanged) -->
+                <!-- Travel & Clock Section (unchanged) -->
                 <div id="clockSection">
                     <button id="travelToggleBtn" class="actionBtn travelBtn">
                         <i class="fa-solid fa-car"></i> <span id="travelToggleText">Start Travel</span>
@@ -339,12 +339,19 @@
                     </button>
                 </div>
 
-                <!-- Time Logs (reworked) -->
+                <!-- Time Logs -->
                 <div id="timeLogsSection" class="detailCard">
                     <div class="detailSectionHeader">
                         <span class="detailSectionLabel"><i class="fa-regular fa-clock"></i> Time & Travel Logs</span>
                         <span id="timeLogsTotals" class="detailSectionHint"></span>
                     </div>
+
+                    <!-- NEW: Per-user report button -->
+                    <button id="openUserTimesBtn" class="userTimesTrigger">
+                        <i class="fa-solid fa-user-clock"></i>
+                        <span>View My Times</span>
+                        <i class="fa-solid fa-chevron-right userTimesTriggerChevron"></i>
+                    </button>
 
                     <div id="timeLogFilterTabs" role="tablist" aria-label="Time log filter">
                         <button class="timeLogFilterTab active" data-filter="all">All</button>
@@ -404,9 +411,66 @@
             </div>
         </div>
 
+        <!-- USER TIMES REPORT MODAL -->
+        <div id="userTimesModal">
+            <div id="userTimesCard">
+                <div class="modalHeader">
+                    <p class="modalTitle"><i class="fa-solid fa-user-clock"></i> My Times</p>
+                    <button class="modalClose" id="userTimesClose"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div id="userTimesSubtitle" class="userTimesSubtitle">—</div>
+
+                <div id="userTimesTotals" class="userTimesTotals">
+                    <div class="userTimesTotalBox work">
+                        <span class="userTimesTotalLabel"><i class="fa-solid fa-clock"></i> Work</span>
+                        <span class="userTimesTotalValue" id="userTimesTotalWork">0s</span>
+                    </div>
+                    <div class="userTimesTotalBox travel">
+                        <span class="userTimesTotalLabel"><i class="fa-solid fa-car"></i> Travel</span>
+                        <span class="userTimesTotalValue" id="userTimesTotalTravel">0s</span>
+                    </div>
+                </div>
+
+                <!-- Job scope filter -->
+                <div class="userTimesFilterLabel">Job</div>
+                <div id="userTimesJobTabs" role="tablist" aria-label="Job filter">
+                    <button class="userTimesJobTab active" data-job-scope="current">This job</button>
+                    <button class="userTimesJobTab" data-job-scope="all">All jobs</button>
+                    <button class="userTimesJobTab" data-job-scope="pick" id="userTimesJobPickTab">
+                        <i class="fa-solid fa-list"></i> Choose job…
+                    </button>
+                </div>
+
+                <!-- Job picker (hidden until Choose job is tapped) -->
+                <div id="userTimesJobPicker" class="userTimesJobPicker">
+                    <div class="userTimesJobPickerHeader">
+                        <input type="text" id="userTimesJobSearch" class="userTimesJobSearch" placeholder="Search jobs..." />
+                        <button class="modalClose small" id="userTimesJobPickerClose" aria-label="Close job picker">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div id="userTimesJobPickerList" class="userTimesJobPickerList"></div>
+                </div>
+
+                <!-- Date range filter -->
+                <div class="userTimesFilterLabel">Date range</div>
+                <div id="userTimesRangeTabs" role="tablist" aria-label="Date range">
+                    <button class="userTimesRangeTab active" data-range="all">All</button>
+                    <button class="userTimesRangeTab" data-range="7d">Past 7 days</button>
+                    <button class="userTimesRangeTab" data-range="30d">Past month</button>
+                    <button class="userTimesRangeTab" data-range="365d">Past year</button>
+                </div>
+
+                <div id="userTimesList"></div>
+
+                <div id="userTimesPagination"></div>
+            </div>
+        </div>
+
         <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="script.df4118e50a.js"></script>
+        <script src="script.3108cd9415.js"></script>
 
         <!-- Auto-Update System -->
         <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;font-size:14px;margin:0;position:sticky;top:0;z-index:9999;">
