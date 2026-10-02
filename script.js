@@ -1132,7 +1132,7 @@ completeJobButton.addEventListener("click", async () => {
         : "No time sessions recorded.";
 
     const templateParams = {
-        to_email: "ashleywork02@gmail.com",
+        to_email: "electricm8ltd@gmail.com",
         job_name: currentJob.job_name || "—",
         client_name: currentJob.client_name || "—",
         address: currentJob.address || "—",
