@@ -295,7 +295,7 @@ document.querySelectorAll('#jobTabs .jobTab').forEach(btn => {
 async function loadJobs() {
     jobCardsContainer.innerHTML = '<div class="skeleton"></div>'.repeat(3);
     jobPaginationContainer.innerHTML = '';
-    const { data, error } = await db.from("Jobs").select("*").order("created_at", { ascending: false });
+    const { data, error } = await db.from("Jobs").select("*").order("job_name", { ascending: true });
     if (error || !data) {
         const cached = getCachedAllJobs();
         if (cached.length) renderJobList(cached);
@@ -313,6 +313,21 @@ function renderJobList(jobs) {
         (j.client_name || "").toLowerCase().includes(currentSearchTerm) ||
         (j.address || "").toLowerCase().includes(currentSearchTerm)
     );
+
+    // Alphabetical by job name (case-insensitive), with a stable
+    // secondary sort on client name so ties are predictable.
+    searched.sort((a, b) => {
+        const an = (a.job_name || "").trim().toLowerCase();
+        const bn = (b.job_name || "").trim().toLowerCase();
+        if (an < bn) return -1;
+        if (an > bn) return 1;
+        const ac = (a.client_name || "").trim().toLowerCase();
+        const bc = (b.client_name || "").trim().toLowerCase();
+        if (ac < bc) return -1;
+        if (ac > bc) return 1;
+        return 0;
+    });
+
     const groups = { active: [], upcoming: [], completed: [] };
     searched.forEach(j => groups[getJobStatus(j)].push(j));
 
