@@ -16,7 +16,7 @@
         <title>JobTrack</title>
         <link rel="manifest" href="manifest.json" />
         <link rel="apple-touch-icon" href="icon-192.png" />
-        <link rel="stylesheet" href="style1.css" />
+        <link rel="stylesheet" href="style.8c5f496c16.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </head>
@@ -111,25 +111,6 @@
                 </button>
             </div>
 
-            <!-- JOB STATUS TABS -->
-            <div id="jobTabs" role="tablist" aria-label="Job status">
-                <button class="jobTab active" data-tab="active" role="tab" aria-selected="true">
-                    <i class="fa-solid fa-play"></i>
-                    <span>Active</span>
-                    <span class="jobTabCount" id="tabCountActive">0</span>
-                </button>
-                <button class="jobTab" data-tab="upcoming" role="tab" aria-selected="false">
-                    <i class="fa-solid fa-calendar"></i>
-                    <span>Upcoming</span>
-                    <span class="jobTabCount" id="tabCountUpcoming">0</span>
-                </button>
-                <button class="jobTab" data-tab="completed" role="tab" aria-selected="false">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <span>Completed</span>
-                    <span class="jobTabCount" id="tabCountCompleted">0</span>
-                </button>
-            </div>
-
             <div class="jobCard" id="addJob">
                 <div id="addJobInner">
                     <div id="addJobIcon">
@@ -141,9 +122,8 @@
                     </div>
                 </div>
             </div>
-
+            <p id="sectionTitle">Active Jobs</p>
             <div id="jobCardsContainer"></div>
-            <div id="jobPaginationContainer"></div>
         </div>
 
         <!-- NEW JOB FORM -->

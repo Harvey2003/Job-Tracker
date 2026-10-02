@@ -12,11 +12,11 @@
         <meta name="apple-mobile-web-app-title" content="JobTrack" />
         <meta name="application-name" content="JobTrack" />
         <meta name="theme-color" content="#0b1120" />
-        <meta name="app-version" content="20261002061213">
+        <meta name="app-version" content="20261002062746">
         <title>JobTrack</title>
         <link rel="manifest" href="manifest.json" />
         <link rel="apple-touch-icon" href="icon-192.png" />
-        <link rel="stylesheet" href="style.6456b3d660.css" />
+        <link rel="stylesheet" href="style.9a87436bd8.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </head>
@@ -210,7 +210,25 @@
                     </div>
                 </div>
 
-                <!-- Travel & Clock Section -->
+                <!-- Hero card: job name + status + client -->
+                <div id="jobHeroCard">
+                    <div id="jobHeroTop">
+                        <p id="jobHeroName">Job Name</p>
+                        <span id="jobHeroStatus" class="statusBadge">active</span>
+                    </div>
+                    <div id="jobHeroMeta">
+                        <div class="jobHeroMetaRow" id="jobHeroClientRow">
+                            <i class="fa-regular fa-user"></i>
+                            <span id="jobHeroClient">—</span>
+                        </div>
+                        <div class="jobHeroMetaRow" id="jobHeroAddressRow">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <span id="jobHeroAddress">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Travel & Clock Section (visually unchanged) -->
                 <div id="clockSection">
                     <button id="travelToggleBtn" class="actionBtn travelBtn">
                         <i class="fa-solid fa-car"></i> <span id="travelToggleText">Start Travel</span>
@@ -226,9 +244,9 @@
 
                 <!-- Photos Section -->
                 <div id="photosSection" class="detailCard">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <span class="detailLabel"><i class="fa-solid fa-camera" style="margin-right:6px;"></i>Job Photos (max 3)</span>
-                        <button id="takePhotoBtn" class="stockAddBtn" style="padding: 8px 14px; font-size:0.8rem;">
+                    <div class="detailSectionHeader">
+                        <span class="detailSectionLabel"><i class="fa-solid fa-camera"></i> Job Photos <span class="detailSectionHint">max 3</span></span>
+                        <button id="takePhotoBtn" class="chipBtn">
                             <i class="fa-solid fa-camera"></i> Take Photo
                         </button>
                     </div>
@@ -237,57 +255,49 @@
                         <i class="fa-regular fa-envelope"></i> Send Photos via Email
                     </button>
                 </div>
-                
+
                 <!-- Job Info (view mode) -->
                 <div id="jobDetailView" class="detailCard">
-                    <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-regular fa-file-lines"></i>Job Name</span>
-                        <span class="detailValue" id="detailJobName"></span>
+                    <div class="detailSectionHeader">
+                        <span class="detailSectionLabel"><i class="fa-regular fa-file-lines"></i> Job Details</span>
                     </div>
-                    <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-regular fa-clipboard"></i>Job Description</span>
-                        <span class="detailValue" id="detailFault"></span>
-                    </div>
-                    <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-solid fa-location-dot"></i>Address</span>
-                        <span class="detailValue" id="detailAddress"></span>
-                    </div>
-                    <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-regular fa-user"></i>Client</span>
-                        <span class="detailValue" id="detailClientName"></span>
-                    </div>
-                    <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-solid fa-phone"></i>Contact Phone</span>
-                        <span class="detailValue" id="detailPhone"></span>
-                    </div>
-                    <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-regular fa-calendar"></i>Start Date</span>
-                        <span class="detailValue" id="detailStartDate"></span>
-                    </div>
-                    <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-solid fa-boxes-stacked"></i>Stock</span>
-                        <div class="detailValue" id="detailStock">
-                            <div id="stockChipsView" class="stockChips"></div>
-                            <button class="addStockInlineBtn" id="addStockInlineBtn">
-                                <i class="fa-solid fa-plus"></i> Add Stock
-                            </button>
-                            <div id="addStockInlineForm" class="addStockInlineForm" style="display:none;">
-                                <input placeholder="Item name..." class="newJobInput" id="newStockItemInput" />
-                                <button class="stockAddBtn" id="addStockInlineConfirmBtn">
-                                    <i class="fa-solid fa-check"></i> Add
+                    <div class="infoGrid">
+                        <div class="infoItem">
+                            <span class="infoLabel"><i class="fa-regular fa-clipboard"></i> Description</span>
+                            <span class="infoValue" id="detailFault">—</span>
+                        </div>
+                        <div class="infoItem">
+                            <span class="infoLabel"><i class="fa-solid fa-phone"></i> Contact Phone</span>
+                            <span class="infoValue" id="detailPhone">—</span>
+                        </div>
+                        <div class="infoItem">
+                            <span class="infoLabel"><i class="fa-regular fa-calendar"></i> Start Date</span>
+                            <span class="infoValue" id="detailStartDate">—</span>
+                        </div>
+                        <div class="infoItem infoItemFull">
+                            <span class="infoLabel"><i class="fa-solid fa-boxes-stacked"></i> Stock / Materials</span>
+                            <div class="infoValue" id="detailStock">
+                                <div id="stockChipsView" class="stockChips"></div>
+                                <button class="addStockInlineBtn" id="addStockInlineBtn">
+                                    <i class="fa-solid fa-plus"></i> Add Stock
                                 </button>
-                                <button class="stockAddBtn cancelBtn" id="cancelAddStockBtn">Cancel</button>
+                                <div id="addStockInlineForm" class="addStockInlineForm" style="display:none;">
+                                    <input placeholder="Item name..." class="newJobInput" id="newStockItemInput" />
+                                    <button class="stockAddBtn" id="addStockInlineConfirmBtn">
+                                        <i class="fa-solid fa-check"></i> Add
+                                    </button>
+                                    <button class="stockAddBtn cancelBtn" id="cancelAddStockBtn">Cancel</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="detailRow">
-                        <span class="detailLabel"><i class="fa-regular fa-circle-check"></i>Status</span>
-                        <span class="detailValue" id="detailStatus"></span>
                     </div>
                 </div>
 
                 <!-- Job Info (edit mode) -->
                 <div id="jobDetailEdit" class="detailCard" style="display:none;">
+                    <div class="detailSectionHeader">
+                        <span class="detailSectionLabel"><i class="fa-solid fa-pen"></i> Edit Job</span>
+                    </div>
                     <div class="formGroup">
                         <label class="formHeader">Job Name</label>
                         <input class="newJobInput" id="editJobName" />
@@ -329,9 +339,19 @@
                     </button>
                 </div>
 
-                <!-- Time Logs -->
+                <!-- Time Logs (reworked) -->
                 <div id="timeLogsSection" class="detailCard">
-                    <p class="sectionSubTitle"><i class="fa-regular fa-clock" style="margin-right:8px;"></i>Time & Travel Logs</p>
+                    <div class="detailSectionHeader">
+                        <span class="detailSectionLabel"><i class="fa-regular fa-clock"></i> Time & Travel Logs</span>
+                        <span id="timeLogsTotals" class="detailSectionHint"></span>
+                    </div>
+
+                    <div id="timeLogFilterTabs" role="tablist" aria-label="Time log filter">
+                        <button class="timeLogFilterTab active" data-filter="all">All</button>
+                        <button class="timeLogFilterTab" data-filter="work">Work</button>
+                        <button class="timeLogFilterTab" data-filter="travel">Travel</button>
+                    </div>
+
                     <div id="timeLogsContainer"></div>
                 </div>
 
@@ -346,9 +366,47 @@
             </div>
         </div>
 
+        <!-- TIME LOG EDIT MODAL -->
+        <div id="timeLogEditModal">
+            <div id="timeLogEditCard">
+                <div class="modalHeader">
+                    <p class="modalTitle"><i class="fa-solid fa-pen"></i> Edit Time Log</p>
+                    <button class="modalClose" id="timeLogEditClose"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="formGroup">
+                    <label class="formHeader">Type</label>
+                    <div class="segmentedControl" id="editLogTypeControl">
+                        <button type="button" data-type="work" class="segmentedOption active">Work</button>
+                        <button type="button" data-type="travel" class="segmentedOption">Travel</button>
+                    </div>
+                </div>
+
+                <div class="formGroup">
+                    <label class="formHeader">Clocked In</label>
+                    <input type="datetime-local" class="newJobInput" id="editLogIn" />
+                </div>
+
+                <div class="formGroup">
+                    <label class="formHeader">Clocked Out</label>
+                    <input type="datetime-local" class="newJobInput" id="editLogOut" />
+                    <p class="formHint" id="editLogOutHint">Leave empty if still active.</p>
+                </div>
+
+                <div class="editLogDurationPreview" id="editLogDurationPreview">
+                    Duration: <b>—</b>
+                </div>
+
+                <div class="modalActions">
+                    <button class="stockAddBtn cancelBtn" id="timeLogEditCancel">Cancel</button>
+                    <button class="stockAddBtn" id="timeLogEditSave"><i class="fa-solid fa-check"></i> Save</button>
+                </div>
+            </div>
+        </div>
+
         <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="script.3238e21f29.js"></script>
+        <script src="script.df4118e50a.js"></script>
 
         <!-- Auto-Update System -->
         <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;font-size:14px;margin:0;position:sticky;top:0;z-index:9999;">
