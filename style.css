@@ -1270,7 +1270,7 @@ textarea { height: 100px; padding: 14px 16px; resize: vertical; }
     display: none; position: fixed; inset: 0;
     background: rgba(11, 17, 32, 0.55);
     backdrop-filter: blur(6px);
-    z-index: 600; align-items: center;
+    z-index: 700; align-items: center;
     justify-content: center; padding: 1.2rem;
 }
 #timeLogEditModal.active { display: flex; }
