@@ -12,11 +12,11 @@
         <meta name="apple-mobile-web-app-title" content="JobTrack" />
         <meta name="application-name" content="JobTrack" />
         <meta name="theme-color" content="#0b1120" />
-        <meta name="app-version" content="20261002071925">
+        <meta name="app-version" content="20261002073840">
         <title>JobTrack</title>
         <link rel="manifest" href="manifest.json" />
         <link rel="apple-touch-icon" href="icon-192.png" />
-        <link rel="stylesheet" href="style.9e1e0038b8.css" />
+        <link rel="stylesheet" href="style.78657e7e16.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </head>
@@ -87,10 +87,10 @@
                 <i class="fa-solid fa-briefcase navIcon"></i>
                 <span>Jobs</span>
             </div>
-            <div class="navItem" id="createJobSection">
-                <i class="fa-solid fa-plus navIcon"></i>
-                <span>Create Job</span>
-            </div>
+            <button id="sidebarUserTimesBtn" class="navItem">
+                <i class="fa-solid fa-user-clock navIcon"></i>
+                <span>My Times</span>
+            </button>
             <button id="manual-update-btn" class="navItem">
                 <i class="fa-solid fa-rotate-right navIcon"></i>
                 <span>Force Refresh & Update</span>
@@ -149,49 +149,105 @@
         <!-- NEW JOB FORM -->
         <div id="newJobForm">
             <div id="formCard">
-                <div id="formTitleRow">
-                    <p id="formTitle"><i class="fa-solid fa-plus-circle" style="color:#f59e0b; margin-right:10px;"></i>Create New Job</p>
-                    <div id="formClose"><i class="fa-solid fa-xmark"></i></div>
+
+                <!-- Header: title block + floating close -->
+                <div id="formHeaderBlock">
+                    <div id="formHeaderIcon">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <div id="formHeaderText">
+                        <p id="formTitle">New Job</p>
+                        <p id="formSubtitle">Fill in the details to add a job to the schedule</p>
+                    </div>
+                    <button id="formClose" type="button" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
-                <div class="formGroup">
-                    <label class="formHeader">Job Name</label>
-                    <input placeholder="e.g. Kitchen Rewire" class="newJobInput" id="inputJobName" />
+
+                <!-- Section: Job information -->
+                <div class="formSection">
+                    <p class="formSectionTitle"><i class="fa-regular fa-file-lines"></i> Job information</p>
+
+                    <div class="formGroup">
+                        <label class="formHeader" for="inputJobName">
+                            <i class="fa-regular fa-pen-to-square"></i> Job name
+                        </label>
+                        <input placeholder="e.g. Kitchen Rewire" class="newJobInput" id="inputJobName" autocomplete="off" />
+                    </div>
+
+                    <div class="formGroup">
+                        <label class="formHeader" for="inputFault">
+                            <i class="fa-regular fa-clipboard"></i> Description
+                        </label>
+                        <textarea placeholder="Briefly describe the job, fault, or scope of work…" id="inputFault"></textarea>
+                    </div>
                 </div>
-                <div class="formGroup">
-                    <label class="formHeader">Job Description</label>
-                    <textarea placeholder="Job Description" id="inputFault"></textarea>
+
+                <!-- Section: Client & contact -->
+                <div class="formSection">
+                    <p class="formSectionTitle"><i class="fa-regular fa-user"></i> Client & contact</p>
+
+                    <div class="formGroup">
+                        <label class="formHeader" for="inputClientName">
+                            <i class="fa-regular fa-user"></i> Client name
+                        </label>
+                        <input placeholder="e.g. John Smith" class="newJobInput" id="inputClientName" autocomplete="off" />
+                    </div>
+
+                    <div class="formGroup">
+                        <label class="formHeader" for="inputAddress">
+                            <i class="fa-solid fa-location-dot"></i> Address
+                        </label>
+                        <input placeholder="e.g. 12 Example St" class="newJobInput" id="inputAddress" autocomplete="off" />
+                    </div>
+
+                    <div class="formGroup">
+                        <label class="formHeader" for="inputPhone">
+                            <i class="fa-solid fa-phone"></i> Contact phone
+                        </label>
+                        <input placeholder="022 000 0000" class="newJobInput" id="inputPhone" inputmode="tel" autocomplete="off" />
+                    </div>
                 </div>
-                <div class="formGroup">
-                    <label class="formHeader">Client Name</label>
-                    <input placeholder="e.g. John Smith" class="newJobInput" id="inputClientName" />
+
+                <!-- Section: Schedule -->
+                <div class="formSection">
+                    <p class="formSectionTitle"><i class="fa-regular fa-calendar"></i> Schedule</p>
+
+                    <div class="formGroup">
+                        <label class="formHeader" for="startDate">
+                            <i class="fa-regular fa-calendar-check"></i> Start date
+                        </label>
+                        <input type="date" class="newJobInput" id="startDate" />
+                    </div>
                 </div>
-                <div class="formGroup">
-                    <label class="formHeader">Address</label>
-                    <input placeholder="e.g. 12 Example St" class="newJobInput" id="inputAddress" />
-                </div>
-                <div class="formGroup">
-                    <label class="formHeader">Contact Phone</label>
-                    <input placeholder="0220000000" class="newJobInput" id="inputPhone" />
-                </div>
-                <div class="formGroup">
-                    <label class="formHeader">Start Date</label>
-                    <input type="date" class="newJobInput" id="startDate" />
-                </div>
-                <div class="formGroup">
-                    <label class="formHeader">Stock / Materials Needed</label>
-                    <div id="stockInputContainer" class="stockInputContainer">
-                        <div id="stockChipsCreate" class="stockChips"></div>
-                        <div class="stockInputRow">
-                            <input placeholder="e.g. Cable, switches..." class="newJobInput" id="inputStockItem" />
-                            <button type="button" class="stockAddBtn" id="addStockItemBtn">
-                                <i class="fa-solid fa-plus"></i> Add
-                            </button>
+
+                <!-- Section: Materials -->
+                <div class="formSection formSectionLast">
+                    <p class="formSectionTitle"><i class="fa-solid fa-boxes-stacked"></i> Materials</p>
+
+                    <div class="formGroup">
+                        <label class="formHeader">
+                            <i class="fa-solid fa-boxes-stacked"></i> Stock / materials needed
+                        </label>
+                        <div id="stockInputContainer" class="stockInputContainer">
+                            <div id="stockChipsCreate" class="stockChips"></div>
+                            <div class="stockInputRow">
+                                <input placeholder="e.g. Cable, switches…" class="newJobInput" id="inputStockItem" autocomplete="off" />
+                                <button type="button" class="stockAddBtn" id="addStockItemBtn">
+                                    <i class="fa-solid fa-plus"></i> Add
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <button class="formButton" id="newJobButton">
-                    <i class="fa-solid fa-check"></i> Create Job
-                </button>
+
+                <!-- Sticky footer: submit -->
+                <div id="formFooter">
+                    <button class="formButton" id="newJobButton">
+                        <i class="fa-solid fa-check"></i> Create Job
+                    </button>
+                </div>
+
             </div>
         </div>
 
@@ -475,7 +531,7 @@
 
         <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="script.d52db5ce8b.js"></script>
+        <script src="script.b38d11717b.js"></script>
 
         <!-- Auto-Update System -->
         <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;font-size:14px;margin:0;position:sticky;top:0;z-index:9999;">

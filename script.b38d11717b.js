@@ -167,8 +167,19 @@ function showLogin() {
 function showApp(user) {
     currentUser = user;
     loginScreen.classList.remove("active");
+
     const displayName = user.user_metadata?.display_name || user.email.split("@")[0];
+    const email = user.email || "";
+
+    // Top nav welcome text
     welcomeSub.textContent = displayName;
+
+    // Sidebar user area
+    const sidebarName = document.getElementById("navUserName");
+    const sidebarEmail = document.getElementById("navUserEmail");
+    if (sidebarName) sidebarName.textContent = displayName;
+    if (sidebarEmail) sidebarEmail.textContent = email;
+
     loadJobs();
 }
 loginButton.onclick = async () => {
@@ -191,7 +202,6 @@ function closeNav() { navBar.classList.remove("open"); navOverlay.classList.remo
 openCloseNav.onclick = () => { navBar.classList.toggle("open"); navOverlay.classList.toggle("active"); };
 navOverlay.onclick = closeNav;
 jobsSection.onclick = () => { closeNav(); closeJobDetail(); };
-createJobSection.onclick = () => { closeNav(); openForm(); };
 
 // === CREATE JOB FORM ===
 function openForm() {
@@ -1348,6 +1358,11 @@ function updateJobTabsUI() {
     const allTab     = document.querySelector('#userTimesJobTabs .userTimesJobTab[data-job-scope="all"]');
     const pickTab    = document.getElementById("userTimesJobPickTab");
 
+    // Show "This job" only when a job is open.
+    if (currentTab) {
+        currentTab.style.display = currentJob ? "" : "none";
+    }
+
     [currentTab, allTab, pickTab].forEach(t => t && t.classList.remove("active", "is-picked"));
 
     if (userTimesJobScope === "current") {
@@ -1382,10 +1397,15 @@ async function fetchAndRenderUserTimes() {
         .eq("user_id", currentUser.id)
         .order("clocked_in_at", { ascending: false });
 
-    if (userTimesJobScope === "current") {
-        if (!currentJob) return;
-        query = query.eq("job_id", currentJob.id);
-    } else if (userTimesJobScope === "pick") {
+        if (userTimesJobScope === "current") {
+            // If there's no current job (sidebar launch when no job was open),
+            // gracefully fall through to "all jobs" instead of returning.
+            if (!currentJob) {
+                // No job open — treat as all jobs.
+            } else {
+                query = query.eq("job_id", currentJob.id);
+            }
+        } else if (userTimesJobScope === "pick") {
         if (!userTimesPickedJobId) return;
         query = query.eq("job_id", userTimesPickedJobId);
     }
@@ -1548,8 +1568,15 @@ function buildUserTimeRow(log, jobNameMap, showJobName) {
 
 // --- Modal open/close -----------------------------------------------------
 
-async function openUserTimesModal() {
-    if (!currentJob || !currentUser) return;
+async function openUserTimesModal(opts) {
+    if (!currentUser) return;
+    opts = opts || {};
+
+    // Determine the default scope:
+    //   - Inside a job (called from the detail panel) → "This job"
+    //   - From the sidebar (no job open) → "All jobs"
+    const hasJob = !!currentJob;
+    const defaultScope = opts.defaultScope || (hasJob ? "current" : "all");
 
     // Preload the job list for the picker (localStorage cache first).
     userTimesJobCache = getCachedAllJobs();
@@ -1563,7 +1590,7 @@ async function openUserTimesModal() {
 
     // Reset state
     userTimesRange = "all";
-    userTimesJobScope = "current";
+    userTimesJobScope = defaultScope;
     userTimesPickedJobId = null;
     userTimesPage = 1;
 
@@ -1586,7 +1613,16 @@ function closeUserTimesModal() {
 
 // --- Wiring ---------------------------------------------------------------
 
-document.getElementById("openUserTimesBtn")?.addEventListener("click", openUserTimesModal);
+// "View My Times" button inside the job detail panel → default to this job
+document.getElementById("openUserTimesBtn")?.addEventListener("click", () => {
+    openUserTimesModal({ defaultScope: "current" });
+});
+
+// Sidebar "My Times" button → default to all jobs (or this job if one is open)
+document.getElementById("sidebarUserTimesBtn")?.addEventListener("click", () => {
+    closeNav();
+    openUserTimesModal({ defaultScope: currentJob ? "current" : "all" });
+});
 
 document.getElementById("userTimesClose")?.addEventListener("click", closeUserTimesModal);
 document.getElementById("userTimesModal")?.addEventListener("click", (e) => {
