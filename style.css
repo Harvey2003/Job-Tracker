@@ -1101,11 +1101,14 @@ textarea {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 14px;
-    padding: 0.6rem;
+    padding: 0.7rem 0.7rem 0.5rem 0.7rem;
     margin: -0.35rem 0 0.85rem 0;
-    max-height: 240px;
     flex-direction: column;
     overflow: hidden;
+    /* Let the picker grow into the modal's available height */
+    flex: 1 1 auto;
+    min-height: 220px;
+    max-height: 60dvh;
 }
 .userTimesJobPicker.active { display: flex; }
 
@@ -1113,18 +1116,19 @@ textarea {
     display: flex;
     gap: 6px;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.55rem;
+    flex-shrink: 0;
 }
 
 .userTimesJobSearch {
     flex: 1;
-    height: 38px;
+    height: 42px;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
-    padding: 0 12px;
+    padding: 0 14px;
     background: #ffffff;
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     color: #0b1120;
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -1135,39 +1139,42 @@ textarea {
 }
 
 .modalClose.small {
-    width: 32px;
-    height: 32px;
-    font-size: 0.85rem;
+    width: 42px;
+    height: 42px;
+    font-size: 0.9rem;
     border-radius: 10px;
     flex-shrink: 0;
 }
 
 .userTimesJobPickerList {
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding-right: 2px;
+    gap: 6px;
+    padding-right: 4px;
+    padding-bottom: 0.2rem;
 }
 
 .userTimesJobPickerItem {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 0.6rem 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 0.75rem 0.9rem;
     background: #ffffff;
     border: 1px solid #eef2f6;
-    border-radius: 10px;
+    border-radius: 12px;
     cursor: pointer;
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     color: #0b1120;
     text-align: left;
     transition: all 0.15s ease;
     -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
 }
 .userTimesJobPickerItem:active {
     background: #f1f5f9;
@@ -1180,25 +1187,38 @@ textarea {
     color: #78350f;
     font-weight: 700;
 }
+
 .userTimesJobPickerItemName {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #0b1120;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    /* Allow up to two lines so long names are readable */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.userTimesJobPickerItem.is-active .userTimesJobPickerItemName {
+    color: #78350f;
+}
+
+.userTimesJobPickerItemMeta {
+    font-size: 0.78rem;
+    color: #64748b;
+    font-weight: 500;
+    line-height: 1.25;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    min-width: 0;
-    flex: 1;
-}
-.userTimesJobPickerItemMeta {
-    font-size: 0.7rem;
-    color: #94a3b8;
-    font-weight: 500;
-    flex-shrink: 0;
 }
 .userTimesJobPickerItem.is-active .userTimesJobPickerItemMeta { color: #b45309; }
 
 .userTimesJobPickerEmpty {
-    padding: 1rem;
+    padding: 1.5rem 1rem;
     text-align: center;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: #94a3b8;
 }
 
