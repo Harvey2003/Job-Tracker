@@ -35,8 +35,7 @@ const addJob              = document.getElementById("addJob");
 const newJobForm          = document.getElementById("newJobForm");
 const formClose           = document.getElementById("formClose");
 const newJobButton        = document.getElementById("newJobButton");
-const jobCardsContainer   = document.getElementById("jobCardsContainer");
-const jobsSection         = document.getElementById("jobsSection");
+const jobPaginationContainer = document.getElementById("jobPaginationContainer");
 const createJobSection    = document.getElementById("createJobSection");
 const jobDetail           = document.getElementById("jobDetail");
 const jobDetailBack       = document.getElementById("jobDetailBack");
@@ -72,10 +71,15 @@ let newJobStock = [];
 let editJobStock = [];
 let detailStockArray = [];
 
-// Global variables for pagination 
+// Global variables for time-log pagination 
 let allTimeLogs = [];
 let currentLogsPage = 1;
 const logsPerPage = 5;
+
+// Job list: tab + per-tab pagination
+let currentJobTab = 'active';                       // 'active' | 'upcoming' | 'completed'
+let currentJobsPage = { active: 1, upcoming: 1, completed: 1 };
+const jobsPerPage = 5;
 
 
 // === LOCAL STORAGE HELPERS ===
@@ -222,6 +226,8 @@ newJobButton.onclick = async () => {
 searchInput.oninput = (e) => {
     currentSearchTerm = e.target.value.trim().toLowerCase();
     clearSearchButton.style.display = currentSearchTerm ? "flex" : "none";
+    // Reset pagination for the active tab so results start on page 1.
+    currentJobsPage[currentJobTab] = 1;
     const jobs = getCachedAllJobs();
     if (jobs.length) renderJobList(jobs);
     else loadJobs();
@@ -230,17 +236,41 @@ clearSearchButton.onclick = () => {
     searchInput.value = "";
     currentSearchTerm = "";
     clearSearchButton.style.display = "none";
+    currentJobsPage[currentJobTab] = 1;
     const jobs = getCachedAllJobs();
     if (jobs.length) renderJobList(jobs);
     searchInput.focus();
 };
+
 function getJobStatus(job) {
     if (job.status === "completed") return "completed";
     if (job.start_date && new Date(job.start_date) > new Date()) return "upcoming";
     return "active";
 }
+
+// --- Tab wiring ---
+function setJobTab(tab) {
+    if (!['active', 'upcoming', 'completed'].includes(tab)) return;
+    currentJobTab = tab;
+    // Reset this tab's page back to 1 when switching to it.
+    currentJobsPage[tab] = 1;
+    document.querySelectorAll('#jobTabs .jobTab').forEach(btn => {
+        const isActive = btn.dataset.tab === tab;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    const jobs = getCachedAllJobs();
+    if (jobs.length) renderJobList(jobs);
+    else loadJobs();
+}
+document.querySelectorAll('#jobTabs .jobTab').forEach(btn => {
+    btn.addEventListener('click', () => setJobTab(btn.dataset.tab));
+});
+
+// --- Data loading ---
 async function loadJobs() {
     jobCardsContainer.innerHTML = '<div class="skeleton"></div>'.repeat(3);
+    jobPaginationContainer.innerHTML = '';
     const { data, error } = await db.from("Jobs").select("*").order("created_at", { ascending: false });
     if (error || !data) {
         const cached = getCachedAllJobs();
@@ -251,43 +281,122 @@ async function loadJobs() {
     cacheAllJobs(data);
     renderJobList(data);
 }
+
+// --- Main renderer ---
 function renderJobList(jobs) {
-    const filtered = jobs.filter(j => !currentSearchTerm || (j.job_name||"").toLowerCase().includes(currentSearchTerm) || (j.client_name||"").toLowerCase().includes(currentSearchTerm));
+    // 1. Filter by search term (applies within the current tab).
+    const searched = jobs.filter(j =>
+        !currentSearchTerm ||
+        (j.job_name || "").toLowerCase().includes(currentSearchTerm) ||
+        (j.client_name || "").toLowerCase().includes(currentSearchTerm) ||
+        (j.address || "").toLowerCase().includes(currentSearchTerm)
+    );
+
+    // 2. Group by status.
     const groups = { active: [], upcoming: [], completed: [] };
-    filtered.forEach(j => groups[getJobStatus(j)].push(j));
-    jobCardsContainer.innerHTML = "";
-    for (const [key, title, icon] of [['active','Active','fa-play'],['upcoming','Upcoming','fa-calendar'],['completed','Completed','fa-check-circle']]) {
-        if (groups[key].length) {
-            const header = document.createElement("div");
-            header.className = "statusGroupHeader";
-            if (groupCollapsedState[key]) header.classList.add("collapsed");
-            header.innerHTML = `<span class="statusGroupTitle"><i class="fa-solid ${icon}"></i> ${title} <span class="statusGroupCount">${groups[key].length}</span></span><i class="fa-solid fa-chevron-down groupChevron"></i>`;
-            header.onclick = () => {
-                header.classList.toggle("collapsed");
-                groupCollapsedState[key] = header.classList.contains("collapsed");
-                let next = header.nextSibling;
-                while (next && !next.classList?.contains("statusGroupHeader")) {
-                    if (next.classList?.contains("jobCard")) next.classList.toggle("group-collapsed", groupCollapsedState[key]);
-                    next = next.nextSibling;
-                }
-            };
-            jobCardsContainer.appendChild(header);
-            groups[key].forEach(job => {
-                const card = buildJobCard(job);
-                if (groupCollapsedState[key]) card.classList.add("group-collapsed");
-                jobCardsContainer.appendChild(card);
-            });
-        }
-    }
-    if (!filtered.length) jobCardsContainer.innerHTML = `<p class="emptyState">No jobs found.</p>`;
+    searched.forEach(j => groups[getJobStatus(j)].push(j));
+
+    // 3. Update tab counts (based on *unsearched* totals? No — based on
+    //    searched, so counts reflect what the user is filtering for).
+    document.getElementById('tabCountActive').textContent = groups.active.length;
+    document.getElementById('tabCountUpcoming').textContent = groups.upcoming.length;
+    document.getElementById('tabCountCompleted').textContent = groups.completed.length;
+
+    // 4. Render the current tab with pagination.
+    const currentGroup = groups[currentJobTab] || [];
+    renderJobTabPage(currentGroup);
 }
+
+function renderJobTabPage(groupJobs) {
+    jobCardsContainer.innerHTML = '';
+    jobPaginationContainer.innerHTML = '';
+
+    if (!groupJobs.length) {
+        const emptyMsg = currentSearchTerm
+            ? `No ${currentJobTab} jobs match "${escapeHtml(currentSearchTerm)}".`
+            : `No ${currentJobTab} jobs.`;
+        jobCardsContainer.innerHTML = `<p class="emptyState">${emptyMsg}</p>`;
+        return;
+    }
+
+    const totalPages = Math.ceil(groupJobs.length / jobsPerPage);
+    // Clamp page in case filtering reduced the list below the stored page.
+    if (currentJobsPage[currentJobTab] > totalPages) currentJobsPage[currentJobTab] = totalPages;
+    if (currentJobsPage[currentJobTab] < 1) currentJobsPage[currentJobTab] = 1;
+
+    const page = currentJobsPage[currentJobTab];
+    const start = (page - 1) * jobsPerPage;
+    const pageJobs = groupJobs.slice(start, start + jobsPerPage);
+
+    pageJobs.forEach(job => {
+        jobCardsContainer.appendChild(buildJobCard(job));
+    });
+
+    // Pagination controls (only if more than one page).
+    if (totalPages > 1) {
+        jobPaginationContainer.innerHTML = `
+            <div class="pagination-controls">
+                <button class="pagination-btn" id="jobsPrevBtn" ${page === 1 ? 'disabled' : ''}>
+                    <i class="fa-solid fa-chevron-left"></i> Prev
+                </button>
+                <span class="page-indicator">Page ${page} of ${totalPages}</span>
+                <button class="pagination-btn" id="jobsNextBtn" ${page === totalPages ? 'disabled' : ''}>
+                    Next <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        `;
+        const prevBtn = document.getElementById('jobsPrevBtn');
+        const nextBtn = document.getElementById('jobsNextBtn');
+        if (prevBtn) prevBtn.addEventListener('click', () => {
+            if (currentJobsPage[currentJobTab] > 1) {
+                currentJobsPage[currentJobTab]--;
+                renderJobList(getCachedAllJobs());
+                // Scroll to top of list so the user sees the new cards.
+                document.getElementById('jobLists').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+        if (nextBtn) nextBtn.addEventListener('click', () => {
+            if (currentJobsPage[currentJobTab] < totalPages) {
+                currentJobsPage[currentJobTab]++;
+                renderJobList(getCachedAllJobs());
+                document.getElementById('jobLists').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    }
+}
+
+// --- Card builder ---
 function buildJobCard(job) {
     const card = document.createElement("div");
     card.className = "jobCard";
     card.dataset.id = job.id;
+
     const status = getJobStatus(job);
-    const { bg, color } = status === 'active' ? { bg: "#fef3c7", color: "#d97706" } : status === 'upcoming' ? { bg: "#dbeafe", color: "#2563eb" } : { bg: "#dcfce7", color: "#16a34a" };
-    card.innerHTML = `<div class="jobCardHeader"><p class="jobName">${escapeHtml(job.job_name)}</p><span class="statusBadge" style="background:${bg};color:${color}">${status}</span></div><p class="jobSub">${escapeHtml(job.client_name||'No client')} · ${job.start_date||'No date'}</p>`;
+    const { bg, color } = status === 'active'
+        ? { bg: "#fef3c7", color: "#b45309" }
+        : status === 'upcoming'
+            ? { bg: "#dbeafe", color: "#1d4ed8" }
+            : { bg: "#dcfce7", color: "#15803d" };
+
+    const client  = job.client_name || "No client";
+    const address = job.address     || "No address";
+
+    card.innerHTML = `
+        <div class="jobCardHeader">
+            <p class="jobName">${escapeHtml(job.job_name || "Untitled job")}</p>
+            <span class="statusBadge" style="background:${bg};color:${color}">${status}</span>
+        </div>
+        <div class="jobCardMeta">
+            <div class="jobCardMetaRow client">
+                <i class="fa-regular fa-user"></i>
+                <span>${escapeHtml(client)}</span>
+            </div>
+            <div class="jobCardMetaRow address">
+                <i class="fa-solid fa-location-dot"></i>
+                <span>${escapeHtml(address)}</span>
+            </div>
+        </div>
+    `;
     card.onclick = () => openJobDetail(job.id);
     return card;
 }
