@@ -63,19 +63,20 @@ const sendPhotosEmailBtn  = document.getElementById("sendPhotosEmailBtn");
 // === STATE ===
 let currentJob        = null;
 let currentUser       = null;
-let activeWorkSession = null;
-let activeTravelLog   = null;
+let activeWorkSession = null;   // active work log (clocked in, is_travel=false)
+let activeTravelLog   = null;   // active travel log (is_travel=true, clocked_out_at=null)
 let capturedPhotos    = [];
 let currentSearchTerm = "";
-let activeTab         = "active";
-let newJobStock       = [];
-let editJobStock      = [];
-let detailStockArray  = [];
+let groupCollapsedState = { active: false, upcoming: false, completed: false };
+let newJobStock = [];
+let editJobStock = [];
+let detailStockArray = [];
 
 // Global variables for pagination 
 let allTimeLogs = [];
 let currentLogsPage = 1;
 const logsPerPage = 5;
+
 
 // === LOCAL STORAGE HELPERS ===
 function cacheJob(job) {
@@ -94,6 +95,7 @@ function getCachedAllJobs() {
         return ids.map(id => getCachedJob(id)).filter(Boolean);
     } catch(e) { return []; }
 }
+
 
 // === STOCK HELPERS ===
 function parseStockArray(str) {
@@ -123,6 +125,7 @@ function renderStockChips(containerId, arr, removeFn) {
         });
     }
 }
+
 
 // === AUTH ===
 db.auth.onAuthStateChange((event, session) => {
@@ -155,6 +158,7 @@ loginButton.onclick = async () => {
 };
 loginPassword.addEventListener("keydown", e => { if (e.key === "Enter") loginButton.click(); });
 logoutButton.onclick = async () => { await db.auth.signOut(); closeNav(); };
+
 
 // === NAV ===
 function closeNav() { navBar.classList.remove("open"); navOverlay.classList.remove("active"); }
@@ -213,6 +217,7 @@ newJobButton.onclick = async () => {
     closeForm();
 };
 
+
 // === JOB LIST ===
 searchInput.oninput = (e) => {
     currentSearchTerm = e.target.value.trim().toLowerCase();
@@ -229,18 +234,6 @@ clearSearchButton.onclick = () => {
     if (jobs.length) renderJobList(jobs);
     searchInput.focus();
 };
-
-// === TAB SWITCHING ===
-document.querySelectorAll('.jobTabBtn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.jobTabBtn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeTab = btn.dataset.tab;
-        const jobs = getCachedAllJobs();
-        renderJobList(jobs);
-    });
-});
-
 function getJobStatus(job) {
     if (job.status === "completed") return "completed";
     if (job.start_date && new Date(job.start_date) > new Date()) return "upcoming";
@@ -258,94 +251,47 @@ async function loadJobs() {
     cacheAllJobs(data);
     renderJobList(data);
 }
-
-function getStatusIcon(status) {
-    switch(status) {
-        case 'active': return { icon: 'fa-play-circle', cls: 'icon-active' };
-        case 'upcoming': return { icon: 'fa-calendar-alt', cls: 'icon-upcoming' };
-        case 'completed': return { icon: 'fa-check-circle', cls: 'icon-completed' };
-        default: return { icon: 'fa-briefcase', cls: 'icon-active' };
-    }
-}
-
-function getStatusBadge(status) {
-    switch(status) {
-        case 'active': return { cls: 'badge-active', text: 'Active', icon: 'fa-circle' };
-        case 'upcoming': return { cls: 'badge-upcoming', text: 'Upcoming', icon: 'fa-hourglass-half' };
-        case 'completed': return { cls: 'badge-completed', text: 'Completed', icon: 'fa-check-circle' };
-        default: return { cls: 'badge-active', text: 'Active', icon: 'fa-circle' };
-    }
-}
-
 function renderJobList(jobs) {
-    const filtered = jobs.filter(j => !currentSearchTerm || 
-        (j.job_name||"").toLowerCase().includes(currentSearchTerm) || 
-        (j.client_name||"").toLowerCase().includes(currentSearchTerm) ||
-        (j.address||"").toLowerCase().includes(currentSearchTerm)
-    );
-    
+    const filtered = jobs.filter(j => !currentSearchTerm || (j.job_name||"").toLowerCase().includes(currentSearchTerm) || (j.client_name||"").toLowerCase().includes(currentSearchTerm));
     const groups = { active: [], upcoming: [], completed: [] };
     filtered.forEach(j => groups[getJobStatus(j)].push(j));
-    
     jobCardsContainer.innerHTML = "";
-    
-    const tabJobs = groups[activeTab] || [];
-    
-    if (!tabJobs.length) {
-        jobCardsContainer.innerHTML = `<p class="emptyState">No ${activeTab} jobs found.</p>`;
-        return;
+    for (const [key, title, icon] of [['active','Active','fa-play'],['upcoming','Upcoming','fa-calendar'],['completed','Completed','fa-check-circle']]) {
+        if (groups[key].length) {
+            const header = document.createElement("div");
+            header.className = "statusGroupHeader";
+            if (groupCollapsedState[key]) header.classList.add("collapsed");
+            header.innerHTML = `<span class="statusGroupTitle"><i class="fa-solid ${icon}"></i> ${title} <span class="statusGroupCount">${groups[key].length}</span></span><i class="fa-solid fa-chevron-down groupChevron"></i>`;
+            header.onclick = () => {
+                header.classList.toggle("collapsed");
+                groupCollapsedState[key] = header.classList.contains("collapsed");
+                let next = header.nextSibling;
+                while (next && !next.classList?.contains("statusGroupHeader")) {
+                    if (next.classList?.contains("jobCard")) next.classList.toggle("group-collapsed", groupCollapsedState[key]);
+                    next = next.nextSibling;
+                }
+            };
+            jobCardsContainer.appendChild(header);
+            groups[key].forEach(job => {
+                const card = buildJobCard(job);
+                if (groupCollapsedState[key]) card.classList.add("group-collapsed");
+                jobCardsContainer.appendChild(card);
+            });
+        }
     }
-    
-    tabJobs.forEach(job => {
-        const card = buildJobCard(job);
-        jobCardsContainer.appendChild(card);
-    });
+    if (!filtered.length) jobCardsContainer.innerHTML = `<p class="emptyState">No jobs found.</p>`;
 }
-
 function buildJobCard(job) {
     const card = document.createElement("div");
     card.className = "jobCard";
     card.dataset.id = job.id;
-    
     const status = getJobStatus(job);
-    const statusIcon = getStatusIcon(status);
-    const statusBadge = getStatusBadge(status);
-    
-    const dateDisplay = job.start_date 
-        ? new Date(job.start_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
-        : 'No date';
-    
-    const stockCount = parseStockArray(job.stock || '').length;
-    
-    card.innerHTML = `
-        <div class="jobCardAccent ${status}"></div>
-        <div class="jobCardInner">
-            <div class="jobIcon ${statusIcon.cls}">
-                <i class="fa-solid ${statusIcon.icon}"></i>
-            </div>
-            <div class="jobInfo">
-                <h3 class="jobName">${escapeHtml(job.job_name)}</h3>
-                <div class="jobMeta">
-                    <span><i class="fa-solid fa-user"></i> ${escapeHtml(job.client_name || 'No client')}</span>
-                    <span><i class="fa-solid fa-location-dot"></i> ${escapeHtml(job.address || 'No address')}</span>
-                    ${stockCount ? `<span><i class="fa-solid fa-boxes-stacked"></i> ${stockCount} item${stockCount > 1 ? 's' : ''}</span>` : ''}
-                </div>
-            </div>
-        </div>
-        <div class="jobActions">
-            <span class="statusBadge ${statusBadge.cls}">
-                <i class="fa-solid ${statusBadge.icon}" style="font-size:0.5rem;"></i> ${statusBadge.text}
-            </span>
-            <span class="jobDate">
-                <i class="fa-regular fa-calendar"></i> ${dateDisplay}
-            </span>
-            <i class="fa-solid fa-chevron-right jobCardChevron"></i>
-        </div>
-    `;
-    
+    const { bg, color } = status === 'active' ? { bg: "#fef3c7", color: "#d97706" } : status === 'upcoming' ? { bg: "#dbeafe", color: "#2563eb" } : { bg: "#dcfce7", color: "#16a34a" };
+    card.innerHTML = `<div class="jobCardHeader"><p class="jobName">${escapeHtml(job.job_name)}</p><span class="statusBadge" style="background:${bg};color:${color}">${status}</span></div><p class="jobSub">${escapeHtml(job.client_name||'No client')} · ${job.start_date||'No date'}</p>`;
     card.onclick = () => openJobDetail(job.id);
     return card;
 }
+
 
 // === TRAVEL & CLOCK LOGIC ===
 async function fetchActiveTravelLog(jobId) {
@@ -481,10 +427,7 @@ function updateClockUI() {
         clockButtonText.textContent = "Clock In";
         clockStatus.textContent = "Not clocked in";
     }
-    const total = currentJob?.total_time_seconds || 0;
-    totalTimeDisplay.textContent = total > 0 ? `Total work time: ${formatDuration(total)}` : "";
-    const heroTotal = document.getElementById("jobHeroTotalTime");
-    if (heroTotal) heroTotal.textContent = total > 0 ? formatDuration(total) : "0m";
+    totalTimeDisplay.textContent = (currentJob?.total_time_seconds || 0) > 0 ? `Total work time: ${formatDuration(currentJob.total_time_seconds)}` : "";
 }
 
 clockButton.addEventListener("click", async () => {
@@ -496,6 +439,7 @@ clockButton.addEventListener("click", async () => {
     } catch (err) { console.error(err); alert("Action failed."); }
     finally { clockButton.disabled = false; }
 });
+
 
 // === JOB DETAIL ===
 async function openJobDetail(jobId) {
@@ -527,41 +471,13 @@ function closeJobDetail() {
     activeWorkSession = null;
     activeTravelLog = null;
 }
-
 jobDetailBack.onclick = closeJobDetail;
 
 function populateDetailView(job) {
     const status = getJobStatus(job);
-    const statusBadge = getStatusBadge(status);
-    const statusIcon = getStatusIcon(status);
     const { bg, color } = status === 'active' ? { bg: "#fef3c7", color: "#d97706" } : status === 'upcoming' ? { bg: "#dbeafe", color: "#2563eb" } : { bg: "#dcfce7", color: "#16a34a" };
-    
-    // ---- HERO CARD ----
     document.getElementById("jobDetailTitle").textContent = job.job_name;
-    document.getElementById("jobHeroName").textContent = job.job_name || "—";
-    document.getElementById("jobHeroClient").textContent = job.client_name || "No client";
-    const heroIconEl = document.getElementById("jobHeroIcon");
-    heroIconEl.className = `jobHeroIcon ${statusIcon.cls}`;
-    heroIconEl.innerHTML = `<i class="fa-solid ${statusIcon.icon}"></i>`;
-    
-    const heroStatus = document.getElementById("jobHeroStatus");
-    heroStatus.className = `statusBadge ${statusBadge.cls}`;
-    heroStatus.innerHTML = `<i class="fa-solid ${statusBadge.icon}" style="font-size:0.5rem;"></i> ${statusBadge.text}`;
-    
-    document.getElementById("jobHeroDate").textContent = job.start_date 
-        ? new Date(job.start_date).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
-        : "—";
-    const total = job.total_time_seconds || 0;
-    document.getElementById("jobHeroTotalTime").textContent = total > 0 ? formatDuration(total) : "0m";
-    
-    const stockArr = parseStockArray(job.stock || '');
-    document.getElementById("jobHeroStockCount").textContent = stockArr.length;
-
-    // ---- VIEW MODE DETAIL ROWS (restored) ----
     document.getElementById("detailJobName").textContent = job.job_name || "—";
-    document.getElementById("detailFault").textContent = job.fault_desc || "—";
-    document.getElementById("detailClientName").textContent = job.client_name || "—";
-    document.getElementById("detailStartDate").textContent = job.start_date || "—";
     
     // ---- PHONE: clickable with tel: link ----
     const phoneSpan = document.getElementById("detailPhone");
@@ -593,16 +509,16 @@ function populateDetailView(job) {
     }
     // ------------------------------------------
 
-    // ---- Status row ----
+    document.getElementById("detailClientName").textContent = job.client_name || "—";
+    document.getElementById("detailStartDate").textContent = job.start_date || "—";
+    document.getElementById("detailFault").textContent = job.fault_desc || "—";
     document.getElementById("detailStatus").innerHTML = `<span class="statusBadge" style="background:${bg};color:${color}">${status}</span>`;
 
-    // ---- Stock view ----
+    const stockArr = parseStockArray(job.stock || '');
     detailStockArray = [...stockArr];
     const container = document.getElementById('stockChipsView');
     container.innerHTML = '';
     stockArr.forEach(s => { const chip = document.createElement('span'); chip.className='stockChip'; chip.textContent=s; container.appendChild(chip); });
-    const emptyMsg = document.getElementById('emptyStockMsg');
-    if (emptyMsg) emptyMsg.style.display = stockArr.length ? 'none' : 'block';
 
     const isCompleted = job.status === "completed";
     document.getElementById('addStockInlineBtn').style.display = isCompleted ? 'none' : 'inline-flex';
@@ -610,7 +526,6 @@ function populateDetailView(job) {
     document.getElementById("photosSection").style.display = isCompleted ? "none" : "block";
     completeJobButton.style.display = isCompleted ? "none" : "flex";
     uncompleteJobButton.style.display = isCompleted ? "flex" : "none";
-    document.getElementById("jobHeroCard").classList.toggle("completed", isCompleted);
 }
 
 async function loadTimeLogs(jobId) {
@@ -655,12 +570,10 @@ function renderTimeLogsPage() {
     const logsHtml = pageLogs.map(log => {
         const inTime = new Date(log.clocked_in_at);
         const outTime = log.clocked_out_at ? new Date(log.clocked_out_at) : null;
-        const isTravel = log.is_travel;
-        const typeIcon = isTravel ? '<i class="fa-solid fa-car"></i>' : '<i class="fa-solid fa-wrench"></i>';
-        const typeLabel = isTravel ? "Travel" : "Work";
+        const prefix = log.is_travel ? "🚗 Travel · " : "⏱️ Work · ";
         let duration = log.duration_seconds;
         
-        if (!outTime && !log.clocked_out_at && isTravel && window.activeTravelLog && window.activeTravelLog.id === log.id) {
+        if (!outTime && !log.clocked_out_at && log.is_travel && window.activeTravelLog && window.activeTravelLog.id === log.id) {
             duration = Math.floor((new Date() - inTime) / 1000);
         }
         
@@ -668,17 +581,13 @@ function renderTimeLogsPage() {
         const dateStr = inTime.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         const timeRange = `${inTime.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })} → ${outTime ? outTime.toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' }) : "—"}`;
         
-        return `<div class="timeLogRow ${isTravel ? 'travelLog' : 'workLog'}">
-            <div class="timeLogType">
-                <span class="timeLogTypeIcon">${typeIcon}</span>
-                <div>
-                    <b>${typeLabel}</b><br>
-                    <small>${escapeHtml(log.user_name)}</small>
-                </div>
+        return `<div class="timeLogRow">
+            <div>
+                <b>${escapeHtml(prefix)}${escapeHtml(log.user_name)}</b><br>
+                <small>${dateStr}</small>
             </div>
-            <div class="timeLogDate">${dateStr}</div>
-            <div class="timeLogRange">${timeRange}</div>
-            <div class="timeLogDuration">${formattedDuration}</div>
+            <div>${timeRange}</div>
+            <div>${formattedDuration}</div>
         </div>`;
     }).join('');
     
@@ -717,34 +626,6 @@ function renderTimeLogsPage() {
     }
 }
 
-// === QUICK ACTIONS ===
-document.getElementById("quickCallBtn").addEventListener("click", () => {
-    if (!currentJob?.phone) { alert("No phone number available for this job."); return; }
-    window.location.href = `tel:${encodeURIComponent(currentJob.phone)}`;
-});
-document.getElementById("quickMapBtn").addEventListener("click", () => {
-    if (!currentJob?.address) { alert("No address available for this job."); return; }
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(currentJob.address)}`;
-    window.open(url, '_blank');
-});
-document.getElementById("quickShareBtn").addEventListener("click", async () => {
-    if (!currentJob) return;
-    const shareText = `Job: ${currentJob.job_name}\nClient: ${currentJob.client_name || "—"}\nAddress: ${currentJob.address || "—"}\nPhone: ${currentJob.phone || "—"}\nStart Date: ${currentJob.start_date || "—"}`;
-    if (navigator.share) {
-        try {
-            await navigator.share({ title: currentJob.job_name, text: shareText });
-        } catch (err) {
-            if (err.name !== "AbortError") console.error("Share failed:", err);
-        }
-    } else {
-        try {
-            await navigator.clipboard.writeText(shareText);
-            alert("Job details copied to clipboard!");
-        } catch (err) {
-            alert("Sharing not supported on this device.");
-        }
-    }
-});
 
 // === STOCK INLINE ADD ===
 document.getElementById('addStockInlineBtn').onclick = () => {
@@ -768,6 +649,7 @@ document.getElementById('addStockInlineConfirmBtn').onclick = async () => {
     document.getElementById('addStockInlineForm').style.display = 'none';
     document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
 };
+
 
 // === EDIT JOB ===
 jobDetailEditToggle.onclick = () => {
@@ -814,6 +696,7 @@ saveEditButton.onclick = async () => {
     jobDetailEdit.style.display = "none";
     jobDetailEditToggle.innerHTML = '<i class="fa-solid fa-pen"></i>';
 };
+
 
 // === COMPLETE JOB (EMAIL FIRST, THEN COMPLETE) ===
 completeJobButton.addEventListener("click", async () => {
@@ -899,6 +782,7 @@ completeJobButton.addEventListener("click", async () => {
     }
 });
 
+
 // === UNCOMPLETE JOB ===
 uncompleteJobButton.addEventListener("click", async () => {
     if (!confirm("Mark this job as active again?")) return;
@@ -906,6 +790,7 @@ uncompleteJobButton.addEventListener("click", async () => {
     loadJobs();
     closeJobDetail();
 });
+
 
 // === PHOTOS ===
 function renderPhotoGrid() {
@@ -918,8 +803,6 @@ function renderPhotoGrid() {
         div.appendChild(img); div.appendChild(remove); photoGrid.appendChild(div);
     });
     sendPhotosEmailBtn.style.display = capturedPhotos.length ? "inline-flex" : "none";
-    const counter = document.getElementById("photoCounter");
-    if (counter) counter.textContent = `${capturedPhotos.length} / 3`;
 }
 
 takePhotoBtn.addEventListener("click", () => {
@@ -963,7 +846,13 @@ sendPhotosEmailBtn.addEventListener("click", async () => {
     }
 });
 
+
 // ==================== SERVICE WORKER & UPDATES ====================
+
+// Register SW and listen for update messages
+
+// setTimeout(() => window.location.reload(), 30000);
+
 async function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     
@@ -980,6 +869,7 @@ async function registerSW() {
 const manualUpdateBtn = document.getElementById('manual-update-btn');
 if (manualUpdateBtn) {
     manualUpdateBtn.addEventListener('click', async () => {
+        // Unregister all service workers
         if ('serviceWorker' in navigator) {
             const registrations = await navigator.serviceWorker.getRegistrations();
             for (const registration of registrations) {
