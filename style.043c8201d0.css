@@ -1559,3 +1559,63 @@ textarea {
     transition: all 0.15s;
 }
 #sidebarUserTimesBtn:active { background: #1e293b; color: #f8fafc; }
+
+/* === NOTES (inline editor on detail view) === */
+#detailNotesText {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #0b1120;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    margin: 0;
+    padding: 2px 0 6px;
+}
+
+#addStockInlineForm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: stretch;
+    flex-wrap: nowrap;
+}
+
+#addStockInlineForm .newJobInput {
+    min-height: 84px;
+    height: auto;
+    padding: 12px 14px;
+    resize: vertical;
+    flex: none;
+    min-width: 0;
+}
+
+/* Two action buttons side by side */
+#addStockInlineForm .stockAddBtn {
+    height: 44px;
+    flex: 1;
+}
+#addStockInlineForm .stockAddBtn.cancelBtn { flex: 0 0 auto; padding: 0 20px; }
+
+/* Stack them neatly: Save + Cancel on one row */
+#addStockInlineForm {
+    /* Button row wraps naturally at narrow widths */
+}
+
+/* Give the inline editor a subtle card feel */
+#addStockInlineForm {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+    padding: 10px;
+}
+
+@media (min-width: 400px) {
+    #addStockInlineForm {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        align-items: end;
+        gap: 8px;
+    }
+    #addStockInlineForm .newJobInput { grid-column: 1 / -1; }
+}

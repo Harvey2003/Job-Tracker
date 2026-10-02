@@ -12,11 +12,11 @@
         <meta name="apple-mobile-web-app-title" content="JobTrack" />
         <meta name="application-name" content="JobTrack" />
         <meta name="theme-color" content="#0b1120" />
-        <meta name="app-version" content="20261002074328">
+        <meta name="app-version" content="20261002074916">
         <title>JobTrack</title>
         <link rel="manifest" href="manifest.json" />
         <link rel="apple-touch-icon" href="icon-192.png" />
-        <link rel="stylesheet" href="style.199d433b2c.css" />
+        <link rel="stylesheet" href="style.043c8201d0.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </head>
@@ -221,23 +221,19 @@
                     </div>
                 </div>
 
-                <!-- Section: Materials -->
+                <!-- Section: Notes -->
                 <div class="formSection formSectionLast">
-                    <p class="formSectionTitle"><i class="fa-solid fa-boxes-stacked"></i> Materials</p>
+                    <p class="formSectionTitle"><i class="fa-regular fa-note-sticky"></i> Notes</p>
 
                     <div class="formGroup">
-                        <label class="formHeader">
-                            <i class="fa-solid fa-boxes-stacked"></i> Stock / materials needed
+                        <label class="formHeader" for="inputStockItem">
+                            <i class="fa-regular fa-note-sticky"></i> Notes
                         </label>
-                        <div id="stockInputContainer" class="stockInputContainer">
-                            <div id="stockChipsCreate" class="stockChips"></div>
-                            <div class="stockInputRow">
-                                <input placeholder="e.g. Cable, switches…" class="newJobInput" id="inputStockItem" autocomplete="off" />
-                                <button type="button" class="stockAddBtn" id="addStockItemBtn">
-                                    <i class="fa-solid fa-plus"></i> Add
-                                </button>
-                            </div>
-                        </div>
+                        <textarea
+                            placeholder="Add any notes for this job — materials, access details, special instructions…"
+                            id="inputStockItem"
+                            class="newJobInput"
+                        ></textarea>
                     </div>
                 </div>
 
@@ -331,16 +327,20 @@
                             <span class="infoValue" id="detailStartDate">—</span>
                         </div>
                         <div class="infoItem infoItemFull">
-                            <span class="infoLabel"><i class="fa-solid fa-boxes-stacked"></i> Stock / Materials</span>
+                            <span class="infoLabel"><i class="fa-regular fa-note-sticky"></i> Notes</span>
                             <div class="infoValue" id="detailStock">
-                                <div id="stockChipsView" class="stockChips"></div>
+                                <p id="detailNotesText" class="notesViewText">—</p>
                                 <button class="addStockInlineBtn" id="addStockInlineBtn">
-                                    <i class="fa-solid fa-plus"></i> Add Stock
+                                    <i class="fa-regular fa-pen-to-square"></i> Edit Notes
                                 </button>
                                 <div id="addStockInlineForm" class="addStockInlineForm" style="display:none;">
-                                    <input placeholder="Item name..." class="newJobInput" id="newStockItemInput" />
+                                    <textarea
+                                        placeholder="Add notes for this job…"
+                                        class="newJobInput"
+                                        id="newStockItemInput"
+                                    ></textarea>
                                     <button class="stockAddBtn" id="addStockInlineConfirmBtn">
-                                        <i class="fa-solid fa-check"></i> Add
+                                        <i class="fa-solid fa-check"></i> Save
                                     </button>
                                     <button class="stockAddBtn cancelBtn" id="cancelAddStockBtn">Cancel</button>
                                 </div>
@@ -379,16 +379,14 @@
                         <input type="date" class="newJobInput" id="editStartDate" />
                     </div>
                     <div class="formGroup">
-                        <label class="formHeader">Stock / Materials Needed</label>
-                        <div id="editStockContainer" class="stockInputContainer">
-                            <div id="stockChipsEdit" class="stockChips"></div>
-                            <div class="stockInputRow">
-                                <input placeholder="Add item..." class="newJobInput" id="editStockItemInput" />
-                                <button type="button" class="stockAddBtn" id="editAddStockItemBtn">
-                                    <i class="fa-solid fa-plus"></i> Add
-                                </button>
-                            </div>
-                        </div>
+                        <label class="formHeader" for="editStockItemInput">
+                            <i class="fa-regular fa-note-sticky"></i> Notes
+                        </label>
+                        <textarea
+                            placeholder="Add notes for this job…"
+                            class="newJobInput"
+                            id="editStockItemInput"
+                        ></textarea>
                     </div>
                     <button class="formButton" id="saveEditButton">
                         <i class="fa-solid fa-check"></i> Save Changes
@@ -531,7 +529,7 @@
 
         <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="script.b38d11717b.js"></script>
+        <script src="script.e966846d55.js"></script>
 
         <!-- Auto-Update System -->
         <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;font-size:14px;margin:0;position:sticky;top:0;z-index:9999;">

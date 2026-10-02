@@ -207,19 +207,13 @@ jobsSection.onclick = () => { closeNav(); closeJobDetail(); };
 function openForm() {
     newJobForm.classList.add("active");
     newJobStock = [];
-    renderStockChips('stockChipsCreate', newJobStock, i => newJobStock.splice(i,1) && renderStockChips('stockChipsCreate', newJobStock, () => {}));
-    document.getElementById('inputStockItem').value = '';
+    const notesEl = document.getElementById("inputStockItem");
+    if (notesEl) notesEl.value = "";
 }
 function closeForm() { newJobForm.classList.remove("active"); }
 addJob.onclick = openForm;
 formClose.onclick = closeForm;
 newJobForm.onclick = e => { if (e.target === newJobForm) closeForm(); };
-document.getElementById('addStockItemBtn').onclick = () => {
-    const inp = document.getElementById('inputStockItem');
-    const item = inp.value.trim();
-    if (item) { newJobStock.push(item); inp.value = ''; renderStockChips('stockChipsCreate', newJobStock, i => newJobStock.splice(i,1)); }
-};
-document.getElementById('inputStockItem').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addStockItemBtn').click(); } });
 newJobButton.onclick = async () => {
     const jobName = document.getElementById("inputJobName").value.trim();
     if (!jobName) { alert("Please enter a job name."); return; }
@@ -230,8 +224,8 @@ newJobButton.onclick = async () => {
         address: document.getElementById("inputAddress").value.trim(),
         client_name: document.getElementById("inputClientName").value.trim(),
         start_date: document.getElementById("startDate").value || null,
-        stock: newJobStock.join(', '),
-        fault_desc: document.getElementById("inputFault").value.trim(),
+        stock: newJobStock.join(', '),        
+        stock: (document.getElementById("inputStockItem").value || "").trim(),        fault_desc: document.getElementById("inputFault").value.trim(),
         status: "active",
         phone: document.getElementById("inputPhone").value.trim()
     }]).select().single();
@@ -249,7 +243,9 @@ newJobButton.onclick = async () => {
     document.getElementById("inputFault").value = "";
     document.getElementById("inputPhone").value = "";
     newJobStock = [];
-    renderStockChips('stockChipsCreate', [], null);
+    // Clear the notes textarea (was: inputStockItem).
+    const notesEl = document.getElementById("inputStockItem");
+    if (notesEl) notesEl.value = "";
     closeForm();
 };
 
@@ -657,17 +653,13 @@ function populateDetailView(job) {
     // Start date
     document.getElementById("detailStartDate").textContent = job.start_date || "—";
 
-    // Stock chips
-    const stockArr = parseStockArray(job.stock || '');
-    detailStockArray = [...stockArr];
-    const container = document.getElementById('stockChipsView');
-    container.innerHTML = '';
-    stockArr.forEach(s => {
-        const chip = document.createElement('span');
-        chip.className = 'stockChip';
-        chip.textContent = s;
-        container.appendChild(chip);
-    });
+    // Notes (stored in the same `stock` column; shown as free-form text)
+    const notesText = (job.stock || "").trim();
+    detailStockArray = notesText; // keep the variable so downstream code doesn't break
+    const notesEl = document.getElementById("detailNotesText");
+    if (notesEl) {
+        notesEl.textContent = notesText || "—";
+    }
 
     // Toggle completed/active controls
     const isCompleted = job.status === "completed";
@@ -1009,9 +1001,12 @@ async function recalcJobTotalTime(jobId) {
 }
 
 
-// === STOCK INLINE ADD ===
+// === NOTES — INLINE EDIT ON DETAIL VIEW ===
 document.getElementById('addStockInlineBtn').onclick = () => {
-    document.getElementById('addStockInlineForm').style.display = 'flex';
+    const form = document.getElementById('addStockInlineForm');
+    const input = document.getElementById('newStockItemInput');
+    if (input) input.value = currentJob?.stock || "";
+    form.style.display = 'flex';
     document.getElementById('addStockInlineBtn').style.display = 'none';
 };
 document.getElementById('cancelAddStockBtn').onclick = () => {
@@ -1019,12 +1014,10 @@ document.getElementById('cancelAddStockBtn').onclick = () => {
     document.getElementById('addStockInlineBtn').style.display = 'inline-flex';
 };
 document.getElementById('addStockInlineConfirmBtn').onclick = async () => {
-    const item = document.getElementById('newStockItemInput').value.trim();
-    if (!item || !currentJob) return;
-    detailStockArray.push(item);
-    const newStock = detailStockArray.join(', ');
-    await db.from("Jobs").update({ stock: newStock }).eq("id", currentJob.id);
-    currentJob.stock = newStock;
+    if (!currentJob) return;
+    const newNotes = (document.getElementById('newStockItemInput').value || "").trim();
+    await db.from("Jobs").update({ stock: newNotes }).eq("id", currentJob.id);
+    currentJob.stock = newNotes;
     cacheJob(currentJob);
     populateDetailView(currentJob);
     document.getElementById('newStockItemInput').value = '';
@@ -1046,21 +1039,19 @@ jobDetailEditToggle.onclick = () => {
         document.getElementById("editStartDate").value = currentJob.start_date || "";
         document.getElementById("editFault").value = currentJob.fault_desc || "";
         document.getElementById("editPhone").value = currentJob.phone || "";
-        editJobStock = parseStockArray(currentJob.stock || '');
-        renderStockChips('stockChipsEdit', editJobStock, i => editJobStock.splice(i,1));
+        editJobStock = currentJob.stock || "";
+        const editNotesEl = document.getElementById('editStockItemInput');
+        if (editNotesEl) editNotesEl.value = editJobStock;
     }
 };
-document.getElementById('editAddStockItemBtn').onclick = () => {
-    const inp = document.getElementById('editStockItemInput');
-    if (inp.value.trim()) { editJobStock.push(inp.value.trim()); inp.value = ''; renderStockChips('stockChipsEdit', editJobStock, i => editJobStock.splice(i,1)); }
-};
+
 saveEditButton.onclick = async () => {
     const updates = {
         job_name: document.getElementById("editJobName").value.trim(),
         address: document.getElementById("editAddress").value.trim(),
         client_name: document.getElementById("editClientName").value.trim(),
         start_date: document.getElementById("editStartDate").value || null,
-        stock: editJobStock.join(', '),
+        stock: (document.getElementById("editStockItemInput").value || "").trim(),
         fault_desc: document.getElementById("editFault").value.trim(),
         phone: document.getElementById("editPhone").value.trim()
     };
