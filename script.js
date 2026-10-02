@@ -1545,7 +1545,6 @@ function buildUserTimeRow(log, jobNameMap, showJobName) {
         </div>
     `;
 }
-}
 
 // --- Modal open/close -----------------------------------------------------
 
