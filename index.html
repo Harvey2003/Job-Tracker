@@ -12,11 +12,11 @@
         <meta name="apple-mobile-web-app-title" content="JobTrack" />
         <meta name="application-name" content="JobTrack" />
         <meta name="theme-color" content="#0b1120" />
-        <meta name="app-version" content="20261002070101">
+        <meta name="app-version" content="20261002071240">
         <title>JobTrack</title>
         <link rel="manifest" href="manifest.json" />
         <link rel="apple-touch-icon" href="icon-192.png" />
-        <link rel="stylesheet" href="style.7def366480.css" />
+        <link rel="stylesheet" href="style.5fb01cccc8.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </head>
@@ -433,13 +433,16 @@
                 </div>
 
                 <!-- Job scope filter -->
-                <div class="userTimesFilterLabel">Job</div>
-                <div id="userTimesJobTabs" role="tablist" aria-label="Job filter">
-                    <button class="userTimesJobTab active" data-job-scope="current">This job</button>
-                    <button class="userTimesJobTab" data-job-scope="all">All jobs</button>
-                    <button class="userTimesJobTab" data-job-scope="pick" id="userTimesJobPickTab">
-                        <i class="fa-solid fa-list"></i> Choose job…
-                    </button>
+                <div class="userTimesFilterRow">
+                    <div class="userTimesFilterLabel">Job</div>
+                    <div id="userTimesJobTabs" role="tablist" aria-label="Job filter">
+                        <button class="userTimesJobTab active" data-job-scope="current">This job</button>
+                        <button class="userTimesJobTab" data-job-scope="all">All jobs</button>
+                        <button class="userTimesJobTab" data-job-scope="pick" id="userTimesJobPickTab">
+                            <i class="fa-solid fa-list"></i>
+                            <span>Choose job…</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Job picker (hidden until Choose job is tapped) -->
@@ -454,12 +457,14 @@
                 </div>
 
                 <!-- Date range filter -->
-                <div class="userTimesFilterLabel">Date range</div>
-                <div id="userTimesRangeTabs" role="tablist" aria-label="Date range">
-                    <button class="userTimesRangeTab active" data-range="all">All</button>
-                    <button class="userTimesRangeTab" data-range="7d">Past 7 days</button>
-                    <button class="userTimesRangeTab" data-range="30d">Past month</button>
-                    <button class="userTimesRangeTab" data-range="365d">Past year</button>
+                <div class="userTimesFilterRow">
+                    <div class="userTimesFilterLabel">Date range</div>
+                    <div id="userTimesRangeTabs" role="tablist" aria-label="Date range">
+                        <button class="userTimesRangeTab active" data-range="all">All</button>
+                        <button class="userTimesRangeTab" data-range="7d">Past 7 days</button>
+                        <button class="userTimesRangeTab" data-range="30d">Past month</button>
+                        <button class="userTimesRangeTab" data-range="365d">Past year</button>
+                    </div>
                 </div>
 
                 <div id="userTimesList"></div>
@@ -470,7 +475,7 @@
 
         <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="script.3108cd9415.js"></script>
+        <script src="script.180a178380.js"></script>
 
         <!-- Auto-Update System -->
         <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;font-size:14px;margin:0;position:sticky;top:0;z-index:9999;">

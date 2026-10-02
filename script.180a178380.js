@@ -847,7 +847,12 @@ document.querySelectorAll('#timeLogFilterTabs .timeLogFilterTab').forEach(btn =>
 // ==================== TIME LOG EDIT MODAL ====================
 
 function openTimeLogEditModal(logId) {
-    const log = allTimeLogs.find(l => String(l.id) === String(logId));
+    // Prefer the inline list; fall back to the modal's raw list (All jobs /
+    // different-job scope) so editing works from either place.
+    let log = allTimeLogs.find(l => String(l.id) === String(logId));
+    if (!log && Array.isArray(userTimesRawLogs)) {
+        log = userTimesRawLogs.find(l => String(l.id) === String(logId));
+    }
     if (!log) return;
 
     editingLogId = log.id;
@@ -966,6 +971,12 @@ document.getElementById('timeLogEditSave').addEventListener('click', async () =>
 
         closeTimeLogEditModal();
         await loadTimeLogs(currentJob.id);
+
+        // If the "My Times" modal is open, refresh it too.
+        const userTimesOpen = document.getElementById("userTimesModal")?.classList.contains("active");
+        if (userTimesOpen) {
+            await fetchAndRenderUserTimes();
+        }
     } catch (err) {
         console.error("Save time log failed:", err);
         alert("Failed to save: " + (err.message || "Unknown error"));
@@ -1475,6 +1486,14 @@ function renderUserTimesModal() {
     } else {
         paginationEl.innerHTML = "";
     }
+
+    // Wire edit buttons inside the modal
+    listEl.querySelectorAll('.timelog-editBtn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openTimeLogEditModal(btn.dataset.logId);
+        });
+    });
 }
 
 function buildUserTimeRow(log, jobNameMap, showJobName) {
@@ -1518,8 +1537,14 @@ function buildUserTimeRow(log, jobNameMap, showJobName) {
                     ${outStr ? escapeHtml(outStr) : 'Active'}
                 </span>
             </div>
+            <div class="timelog-actions">
+                <button class="timelog-editBtn" data-log-id="${log.id}">
+                    <i class="fa-solid fa-pen"></i> Edit
+                </button>
+            </div>
         </div>
     `;
+}
 }
 
 // --- Modal open/close -----------------------------------------------------
