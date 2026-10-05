@@ -224,8 +224,8 @@ newJobButton.onclick = async () => {
         address: document.getElementById("inputAddress").value.trim(),
         client_name: document.getElementById("inputClientName").value.trim(),
         start_date: document.getElementById("startDate").value || null,
-        stock: newJobStock.join(', '),        
-        stock: (document.getElementById("inputStockItem").value || "").trim(),        fault_desc: document.getElementById("inputFault").value.trim(),
+        stock: (document.getElementById("inputStockItem").value || "").trim(),
+        fault_desc: document.getElementById("inputFault").value.trim(),
         status: "active",
         phone: document.getElementById("inputPhone").value.trim()
     }]).select().single();
@@ -242,8 +242,6 @@ newJobButton.onclick = async () => {
     document.getElementById("startDate").value = "";
     document.getElementById("inputFault").value = "";
     document.getElementById("inputPhone").value = "";
-    newJobStock = [];
-    // Clear the notes textarea (was: inputStockItem).
     const notesEl = document.getElementById("inputStockItem");
     if (notesEl) notesEl.value = "";
     closeForm();
@@ -1866,8 +1864,7 @@ async function generateHeatPumpPDF() {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(11);
         doc.setTextColor(30, 41, 59);
-        doc.text(formatNZDate(null), margin + 260, y - 4);// Helper: ensures we have room on the current page, otherwise add a new one
-        function ensureSpace(doc, y, needed, pageH, margin) {
+        doc.text(formatNZDate(null), margin + 260, y - 4);
 
         // Signed name above the line if provided
         if (data.signoff) {
