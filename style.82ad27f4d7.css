@@ -1700,6 +1700,49 @@ textarea {
     #addStockInlineForm .newJobInput { grid-column: 1 / -1; }
 }
 
+/* === INVOICE — per-log break input === */
+.invLogRow {
+    /* ensure grid accommodates the break input */
+    grid-template-columns: auto 1fr auto auto;
+}
+.invLogBreak {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 100px;
+    padding: 2px 8px 2px 10px;
+    font-size: 0.72rem;
+    color: #475569;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.invLogBreak input {
+    width: 38px;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #0b1120;
+    text-align: right;
+    padding: 0;
+    -moz-appearance: textfield;
+}
+.invLogBreak input::-webkit-outer-spin-button,
+.invLogBreak input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.invLogBreak span { font-size: 0.68rem; color: #94a3b8; }
+
+/* Live hours adjustments */
+.invLogHours .invLogHoursAdjusted {
+    color: #b45309;
+}
+
 /* === HEAT PUMP SERVICE PANEL === */
 #heatPumpPanel {
     display: none;

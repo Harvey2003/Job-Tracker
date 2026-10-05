@@ -4,7 +4,7 @@
  * Do not edit it manually — edit build.js and rebuild.
  */
 
-const VERSION = '20261005083105';
+const VERSION = '20261005084808';
 const CACHE = `jobtrack-${VERSION}`;
 
 const PRECACHE_URLS = [
