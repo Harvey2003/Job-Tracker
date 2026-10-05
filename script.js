@@ -1779,8 +1779,9 @@ async function generateHeatPumpPDF() {
 
         // -- Checklist sections --
         data.sections.forEach((section) => {
+            y = ensureSpace(doc, y, 140, pageH, margin);
+
             // Section header
-            y = ensureSpace(doc, y, 48, pageH, margin);
             doc.setFillColor(248, 250, 252);
             doc.setDrawColor(226, 232, 240);
             doc.roundedRect(margin, y, contentW, 26, 6, 6, "FD");
