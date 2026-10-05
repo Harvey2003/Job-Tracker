@@ -1544,12 +1544,12 @@ textarea {
     #jobHeroCard { padding: 1.6rem; }
     #jobHeroName { font-size: 1.5rem; }
 }
-
 /* === SIDEBAR — BUTTON-TYPE NAV ITEMS ===
-   The two buttons below need explicit resets so they render exactly
+   These <button> entries need explicit resets so they render exactly
    like the <div class="navItem"> entries around them. */
    #sidebarUserTimesBtn,
-   #sidebarHeatPumpBtn {
+   #sidebarHeatPumpBtn,
+   #sidebarInvoiceBtn {
        width: 100%;
        background: none;
        border: none;
@@ -1568,7 +1568,8 @@ textarea {
        -webkit-tap-highlight-color: transparent;
    }
    #sidebarUserTimesBtn:active,
-   #sidebarHeatPumpBtn:active {
+   #sidebarHeatPumpBtn:active,
+   #sidebarInvoiceBtn:active {
        background: #1e293b;
        color: #f8fafc;
    }
