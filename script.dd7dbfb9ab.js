@@ -1572,6 +1572,387 @@ function buildUserTimeRow(log, jobNameMap, showJobName) {
     `;
 }
 
+// ==================== HEAT PUMP SERVICE CHECKLIST ====================
+
+// Define the checklist structure here. Add/remove items freely —
+// the form and PDF are both generated from this data.
+const HEAT_PUMP_SECTIONS = [
+    {
+        title: "Section 1. Safety & Pre-Checks",
+        items: [
+            "Power isolated / lockout-tagout in place before opening panels",
+            "PPE worn (gloves, eye protection) as required",
+            "Work area clear, ladders/equipment secure",
+            "Customer informed of scope of work before starting"
+        ]
+    },
+    {
+        title: "Section 2. Outdoor Unit Inspection",
+        items: [
+            "Unit mounted level, no excessive vibration",
+            "Clearances around unit adequate (airflow unobstructed)",
+            "Coil clean, no debris, leaves, or blockage",
+            "Fan blades and motor condition checked, spins freely",
+            "Casing / cabinet free of corrosion or damage",
+            "Condensate drain clear and draining correctly",
+            "Refrigerant lines insulated, no visible chafing or damage",
+            "No visible oil residue (sign of refrigerant leak)"
+        ]
+    },
+    {
+        title: "Section 3. Indoor Unit / Air Handler Inspection",
+        items: [
+            "Filter inspected, cleaned or replaced",
+            "Indoor coil clean, no mould or dust buildup",
+            "Condensate drain / pan clear, no leaks or standing water"
+        ]
+    },
+    {
+        title: "Section 4. Electrical Checks",
+        items: [
+            "Supply voltage within manufacturer spec",
+            "Wiring connections tight, no scorching or damage"
+        ]
+    },
+    {
+        title: "Section 5. System Performance",
+        items: [
+            "In cooling mode temp below 10",
+            "In heating mode temp above 50"
+        ]
+    },
+    {
+        title: "Section 6. Final",
+        items: [
+            "Unit restored to normal operating settings",
+            "Work area cleaned up, panels/covers replaced and secured"
+        ]
+    }
+];
+
+// ---- Build the section markup once, on first open ----
+function buildHeatPumpSections() {
+    const container = document.getElementById("hpSectionsContainer");
+    if (!container || container.dataset.built === "1") return;
+
+    container.innerHTML = HEAT_PUMP_SECTIONS.map((section, si) => `
+        <div class="hpSection" data-section-index="${si}">
+            <p class="hpSectionTitle"><i class="fa-regular fa-square-check"></i> ${escapeHtml(section.title)}</p>
+            <div class="hpCheckGroup">
+                ${section.items.map((item, ii) => `
+                    <label class="hpCheckItem">
+                        <input type="checkbox" data-section="${si}" data-item="${ii}" />
+                        <span>${escapeHtml(item)}</span>
+                    </label>
+                `).join("")}
+            </div>
+        </div>
+    `).join("");
+
+    container.dataset.built = "1";
+}
+
+// ---- Panel open / close ----
+function openHeatPumpPanel() {
+    buildHeatPumpSections();
+    // Default the date to today if empty
+    const dateEl = document.getElementById("hpDate");
+    if (dateEl && !dateEl.value) {
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        dateEl.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+    // Default technician to current user's display name if empty
+    const techEl = document.getElementById("hpTechnician");
+    if (techEl && !techEl.value) {
+        techEl.value = displayNameForUser();
+    }
+    document.getElementById("heatPumpPanel").classList.add("active");
+}
+function closeHeatPumpPanel() {
+    document.getElementById("heatPumpPanel").classList.remove("active");
+}
+
+// ---- Reset the form ----
+function resetHeatPumpForm() {
+    if (!confirm("Clear all fields and untick every box?")) return;
+    document.getElementById("hpCustomer").value = "";
+    document.getElementById("hpDate").value = "";
+    document.getElementById("hpTechnician").value = "";
+    document.getElementById("hpAddress").value = "";
+    document.getElementById("hpSystemModel").value = "";
+    document.getElementById("hpNotes").value = "";
+    document.getElementById("hpSignoff").value = "";
+    document.querySelectorAll('#hpSectionsContainer input[type="checkbox"]').forEach(c => c.checked = false);
+    const quick = document.querySelector('input[name="hpServiceType"][value="Full Service"]');
+    if (quick) quick.checked = true;
+}
+
+// ---- Collect the form data ----
+function collectHeatPumpData() {
+    const serviceType = document.querySelector('input[name="hpServiceType"]:checked')?.value || "";
+    const sections = HEAT_PUMP_SECTIONS.map((section, si) => ({
+        title: section.title,
+        items: section.items.map((label, ii) => ({
+            label,
+            checked: !!document.querySelector(`#hpSectionsContainer input[data-section="${si}"][data-item="${ii}"]`)?.checked
+        }))
+    }));
+
+    return {
+        customer: document.getElementById("hpCustomer").value.trim(),
+        date: document.getElementById("hpDate").value,
+        technician: document.getElementById("hpTechnician").value.trim(),
+        address: document.getElementById("hpAddress").value.trim(),
+        systemModel: document.getElementById("hpSystemModel").value.trim(),
+        serviceType,
+        sections,
+        notes: document.getElementById("hpNotes").value.trim(),
+        signoff: document.getElementById("hpSignoff").value.trim()
+    };
+}
+
+// ---- Load jsPDF lazily ----
+async function loadJsPDF() {
+    if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+    await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
+    return window.jspdf.jsPDF;
+}
+
+// ---- Generate the PDF ----
+async function generateHeatPumpPDF() {
+    const btn = document.getElementById("hpPdfBtn");
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Generating…';
+
+    try {
+        const jsPDF = await loadJsPDF();
+        const data = collectHeatPumpData();
+        const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        const margin = 40;
+        const contentW = pageW - margin * 2;
+
+        // -- Header band (dark) --
+        doc.setFillColor(11, 17, 32);
+        doc.rect(0, 0, pageW, 90, "F");
+
+        // Accent stripe
+        doc.setFillColor(245, 158, 11);
+        doc.rect(0, 90, pageW, 4, "F");
+
+        // Brand text
+        doc.setTextColor(245, 158, 11);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(20);
+        doc.text("ElectricM8", margin, 44);
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.text("Heat Pump Service Checklist", margin, 68);
+
+        // Date on right of header
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(180, 190, 205);
+        doc.text(data.date || new Date().toISOString().slice(0, 10), pageW - margin, 44, { align: "right" });
+
+        let y = 120;
+
+        // -- Site details block --
+        y = drawInfoBlock(doc, y, margin, contentW, [
+            ["Customer / Site", data.customer || "—"],
+            ["Address",        data.address || "—"],
+            ["Technician",     data.technician || "—"],
+            ["System Make / Model", data.systemModel || "—"],
+            ["Service Type",   data.serviceType || "—"]
+        ]);
+
+        y += 6;
+
+        // -- Checklist sections --
+        data.sections.forEach((section) => {
+            // Section header: measure first
+            y = ensureSpace(doc, y, 40, pageH, margin);
+            doc.setFillColor(248, 250, 252);
+            doc.setDrawColor(226, 232, 240);
+            doc.roundedRect(margin, y, contentW, 26, 6, 6, "FD");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(15, 23, 42);
+            doc.text(section.title, margin + 10, y + 17);
+            y += 34;
+
+            section.items.forEach((item) => {
+                y = ensureSpace(doc, y, 22, pageH, margin);
+
+                // Checkbox square
+                const boxSize = 12;
+                const boxX = margin + 4;
+                const boxY = y - boxSize + 3;
+                doc.setDrawColor(148, 163, 184);
+                doc.setLineWidth(1);
+                doc.rect(boxX, boxY, boxSize, boxSize);
+
+                if (item.checked) {
+                    doc.setDrawColor(217, 119, 6);
+                    doc.setLineWidth(1.6);
+                    doc.line(boxX + 2.5, boxY + 6.5, boxX + 5, boxY + 9.5);
+                    doc.line(boxX + 5, boxY + 9.5, boxX + 9.5, boxY + 3);
+                }
+
+                // Label text, wrapped
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                doc.setTextColor(30, 41, 59);
+                const textX = margin + 24;
+                const wrapped = doc.splitTextToSize(item.label, contentW - 30);
+                doc.text(wrapped, textX, y);
+                y += wrapped.length * 13 + 4;
+            });
+
+            y += 6;
+        });
+
+        // -- Notes --
+        if (data.notes) {
+            y = ensureSpace(doc, y, 60, pageH, margin);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.setTextColor(15, 23, 42);
+            doc.text("Notes", margin, y);
+            y += 16;
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.setTextColor(51, 65, 85);
+            const notesWrapped = doc.splitTextToSize(data.notes, contentW);
+            notesWrapped.forEach(line => {
+                y = ensureSpace(doc, y, 14, pageH, margin);
+                doc.text(line, margin, y);
+                y += 13;
+            });
+            y += 10;
+        }
+
+        // -- Sign-off --
+        y = ensureSpace(doc, y, 70, pageH, margin);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Sign-off", margin, y);
+        y += 24;
+
+        doc.setDrawColor(148, 163, 184);
+        doc.setLineWidth(0.8);
+        doc.line(margin, y, margin + 220, y);
+        doc.line(margin + 260, y, margin + 460, y);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text("Signed by", margin, y + 14);
+        doc.text("Date", margin + 260, y + 14);
+
+        // Signed name above the line if provided
+        if (data.signoff) {
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(12);
+            doc.setTextColor(15, 23, 42);
+            doc.text(data.signoff, margin, y - 4);
+        }
+
+        // -- Footer on every page --
+        const pageCount = doc.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.setTextColor(148, 163, 184);
+            doc.text("ElectricM8 — Heat Pump Service Checklist", margin, pageH - 18);
+            doc.text(`Page ${i} of ${pageCount}`, pageW - margin, pageH - 18, { align: "right" });
+        }
+
+        // -- Save / share --
+        const fname = `HeatPumpService_${(data.customer || "site").replace(/\s+/g, "_")}_${data.date || new Date().toISOString().slice(0, 10)}.pdf`;
+
+        // Prefer native share (iOS/Android) so the user can save to Files, email, etc.
+        const blob = doc.output("blob");
+        const file = new File([blob], fname, { type: "application/pdf" });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title: "Heat Pump Service Checklist" });
+            } catch (err) {
+                if (err.name !== "AbortError") {
+                    // Fall back to download
+                    doc.save(fname);
+                }
+            }
+        } else {
+            doc.save(fname);
+        }
+    } catch (err) {
+        console.error("PDF generation failed:", err);
+        alert("Failed to generate PDF: " + (err.message || "Unknown error"));
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+
+// Helper: ensures we have room on the current page, otherwise add a new one
+function ensureSpace(doc, y, needed, pageH, margin) {
+    if (y + needed > pageH - 40) {
+        doc.addPage();
+        return margin + 20;
+    }
+    return y;
+}
+
+// Helper: draws a tidy info block with label + value rows
+function drawInfoBlock(doc, y, margin, contentW, rows) {
+    const lineH = 18;
+    const blockH = rows.length * lineH + 20;
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(margin, y, contentW, blockH, 8, 8, "FD");
+
+    let cy = y + 18;
+    rows.forEach(([label, value]) => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text(label.toUpperCase(), margin + 12, cy);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(String(value), margin + 170, cy);
+
+        cy += lineH;
+    });
+
+    return y + blockH + 4;
+}
+
+// ---- Wiring ----
+document.getElementById("sidebarHeatPumpBtn")?.addEventListener("click", () => {
+    closeNav();
+    openHeatPumpPanel();
+});
+document.getElementById("hpClose")?.addEventListener("click", closeHeatPumpPanel);
+document.getElementById("hpResetBtn")?.addEventListener("click", resetHeatPumpForm);
+document.getElementById("hpPdfBtn")?.addEventListener("click", generateHeatPumpPDF);
+
 // --- Modal open/close -----------------------------------------------------
 
 async function openUserTimesModal(opts) {
