@@ -2082,6 +2082,509 @@ document.querySelectorAll("#userTimesRangeTabs .userTimesRangeTab").forEach(btn 
     });
 });
 
+// ==================== INVOICE GENERATOR ====================
+
+// State
+let invAllLogs = [];         // raw logs fetched for current job scope
+let invFilteredLogs = [];    // after date filter
+let invSelectedIds = new Set();
+let invJobScope = "all";     // 'all' or a specific job_id
+let invDateRange = "7d";     // '7d' | '7w' | 'all' | 'custom'
+let invFromDate = null;      // ISO string when custom
+let invToDate = null;
+
+// ---- Panel open/close ----
+function openInvoicePanel() {
+    populateInvoiceJobSelect();
+    defaultInvoiceDates();
+    defaultInvoiceFromUser();
+    document.getElementById("invoicePanel").classList.add("active");
+    // Load logs using the current filter state
+    loadInvoiceLogs();
+}
+function closeInvoicePanel() {
+    document.getElementById("invoicePanel").classList.remove("active");
+}
+
+function defaultInvoiceDates() {
+    const today = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const isoToday = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    const due = new Date(today.getTime() + 7 * 86400000);
+    const isoDue = `${due.getFullYear()}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}`;
+    const invDateEl = document.getElementById("invDate");
+    const invDueEl = document.getElementById("invDueDate");
+    if (invDateEl && !invDateEl.value) invDateEl.value = isoToday;
+    if (invDueEl && !invDueEl.value) invDueEl.value = isoDue;
+}
+
+function defaultInvoiceFromUser() {
+    if (!currentUser) return;
+    const name = currentUser.user_metadata?.display_name || (currentUser.email || "").split("@")[0];
+    const email = currentUser.email || "";
+    const nameEl = document.getElementById("invFromName");
+    const emailEl = document.getElementById("invFromEmail");
+    if (nameEl && !nameEl.value) nameEl.value = name;
+    if (emailEl && !emailEl.value) emailEl.value = email;
+}
+
+function populateInvoiceJobSelect() {
+    const sel = document.getElementById("invJobScope");
+    if (!sel) return;
+    const jobs = getCachedAllJobs()
+        .slice()
+        .sort((a, b) => (a.job_name || "").localeCompare(b.job_name || ""));
+    const currentVal = sel.value;
+    sel.innerHTML = `<option value="all">All jobs</option>` +
+        jobs.map(j => `<option value="${j.id}">${escapeHtml(j.job_name || "Untitled")}</option>`).join("");
+    if (currentVal && [...sel.options].some(o => o.value === currentVal)) {
+        sel.value = currentVal;
+    }
+}
+
+// ---- Date filter helpers ----
+function invRangeToCutoff() {
+    const now = Date.now();
+    if (invDateRange === "7d")   return now - 7 * 86400000;
+    if (invDateRange === "7w")   return now - 7 * 7 * 86400000;
+    if (invDateRange === "all")  return 0;
+    if (invDateRange === "custom") {
+        if (!invFromDate) return 0;
+        return new Date(invFromDate + "T00:00:00").getTime();
+    }
+    return 0;
+}
+function invRangeToCeiling() {
+    if (invDateRange === "custom" && invToDate) {
+        return new Date(invToDate + "T23:59:59").getTime();
+    }
+    return Infinity;
+}
+
+// ---- Fetch logs ----
+async function loadInvoiceLogs() {
+    const listEl = document.getElementById("invLogList");
+    if (!listEl) return;
+    listEl.innerHTML = '<p class="emptyState">Loading…</p>';
+
+    let q = db.from("time_logs")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .eq("is_travel", false)                 // only WORK logs, not travel
+        .not("clocked_out_at", "is", null)      // only completed sessions
+        .order("clocked_in_at", { ascending: false });
+
+    if (invJobScope !== "all") {
+        q = q.eq("job_id", invJobScope);
+    }
+
+    const { data, error } = await q;
+    if (error) {
+        listEl.innerHTML = '<p class="emptyState">Failed to load logs.</p>';
+        return;
+    }
+    invAllLogs = data || [];
+    applyInvoiceDateFilter();
+}
+
+function applyInvoiceDateFilter() {
+    const cutoff = invRangeToCutoff();
+    const ceiling = invRangeToCeiling();
+    invFilteredLogs = invAllLogs.filter(log => {
+        if (!log.clocked_in_at) return false;
+        const t = new Date(log.clocked_in_at).getTime();
+        return t >= cutoff && t <= ceiling;
+    });
+    renderInvoiceLogList();
+}
+
+function renderInvoiceLogList() {
+    const listEl = document.getElementById("invLogList");
+    if (!listEl) return;
+
+    if (!invFilteredLogs.length) {
+        listEl.innerHTML = '<p class="emptyState">No completed work sessions in this range.</p>';
+        updateInvoiceTotals();
+        return;
+    }
+
+    const jobMap = {};
+    getCachedAllJobs().forEach(j => { jobMap[String(j.id)] = j.job_name || "Untitled"; });
+
+    listEl.innerHTML = invFilteredLogs.map(log => {
+        const inTime = new Date(log.clocked_in_at);
+        const outTime = new Date(log.clocked_out_at);
+        const hours = ((outTime - inTime) / 3600000);
+        const hoursStr = hours.toFixed(2);
+        const dateStr = inTime.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+        const inStr  = inTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const outStr = outTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const jobName = jobMap[String(log.job_id)] || "Unknown job";
+        const isSel = invSelectedIds.has(String(log.id));
+
+        return `
+            <label class="invLogRow ${isSel ? "is-checked" : ""}" data-log-id="${log.id}">
+                <input type="checkbox" data-log-id="${log.id}" ${isSel ? "checked" : ""} />
+                <div class="invLogInfo">
+                    <span class="invLogTitle">${escapeHtml(jobName)}</span>
+                    <span class="invLogMeta">
+                        <span>${escapeHtml(dateStr)}</span>
+                        <span>${escapeHtml(inStr)} → ${escapeHtml(outStr)}</span>
+                    </span>
+                </div>
+                <span class="invLogHours">${hoursStr} h</span>
+            </label>
+        `;
+    }).join("");
+
+    // Wire checkboxes
+    listEl.querySelectorAll(".invLogRow").forEach(row => {
+        const cb = row.querySelector('input[type="checkbox"]');
+        cb.addEventListener("change", () => {
+            const id = String(cb.dataset.logId);
+            if (cb.checked) invSelectedIds.add(id);
+            else invSelectedIds.delete(id);
+            row.classList.toggle("is-checked", cb.checked);
+            updateInvoiceTotals();
+        });
+    });
+
+    updateInvoiceTotals();
+}
+
+function updateInvoiceTotals() {
+    let totalSeconds = 0;
+    let count = 0;
+    invFilteredLogs.forEach(log => {
+        if (!invSelectedIds.has(String(log.id))) return;
+        const sec = computeDurationSeconds(log);
+        if (sec > 0) {
+            totalSeconds += sec;
+            count++;
+        }
+    });
+    const hours = totalSeconds / 3600;
+    const hoursEl = document.getElementById("invSelectedHours");
+    const countEl = document.getElementById("invSelectedCount");
+    if (hoursEl) hoursEl.textContent = hours.toFixed(2);
+    if (countEl) countEl.textContent = String(count);
+}
+
+// ---- Wiring: panel open/close, filters, actions ----
+document.getElementById("sidebarInvoiceBtn")?.addEventListener("click", () => {
+    closeNav();
+    openInvoicePanel();
+});
+document.getElementById("invClose")?.addEventListener("click", closeInvoicePanel);
+
+// Job scope
+document.getElementById("invJobScope")?.addEventListener("change", (e) => {
+    invJobScope = e.target.value;
+    invSelectedIds.clear();
+    loadInvoiceLogs();
+});
+
+// Date tabs
+document.querySelectorAll("#invDateTabs .invTab").forEach(btn => {
+    btn.addEventListener("click", () => {
+        invDateRange = btn.dataset.range;
+        document.querySelectorAll("#invDateTabs .invTab").forEach(b => {
+            b.classList.toggle("active", b === btn);
+        });
+        const custom = document.getElementById("invCustomRange");
+        if (custom) custom.style.display = invDateRange === "custom" ? "grid" : "none";
+        applyInvoiceDateFilter();
+    });
+});
+
+// Custom range inputs
+document.getElementById("invFromDate")?.addEventListener("change", (e) => {
+    invFromDate = e.target.value || null;
+    applyInvoiceDateFilter();
+});
+document.getElementById("invToDate")?.addEventListener("change", (e) => {
+    invToDate = e.target.value || null;
+    applyInvoiceDateFilter();
+});
+
+// Select all / Clear
+document.getElementById("invSelectAllBtn")?.addEventListener("click", () => {
+    invFilteredLogs.forEach(log => invSelectedIds.add(String(log.id)));
+    renderInvoiceLogList();
+});
+document.getElementById("invClearSelBtn")?.addEventListener("click", () => {
+    invSelectedIds.clear();
+    renderInvoiceLogList();
+});
+
+// Reset
+document.getElementById("invResetBtn")?.addEventListener("click", () => {
+    if (!confirm("Reset the invoice form and clear selections?")) return;
+    invSelectedIds.clear();
+    invJobScope = "all";
+    invDateRange = "7d";
+    invFromDate = null;
+    invToDate = null;
+
+    const sel = document.getElementById("invJobScope");
+    if (sel) sel.value = "all";
+    document.querySelectorAll("#invDateTabs .invTab").forEach(b => {
+        b.classList.toggle("active", b.dataset.range === "7d");
+    });
+    const custom = document.getElementById("invCustomRange");
+    if (custom) custom.style.display = "none";
+
+    ["invNumber", "invRate", "invFromName", "invFromAddress",
+     "invFromEmail", "invFromIrd", "invToName", "invToAddress", "invToEmail"]
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    document.getElementById("invDate").value = "";
+    document.getElementById("invDueDate").value = "";
+    document.getElementById("invGstToggle").checked = true;
+
+    defaultInvoiceDates();
+    defaultInvoiceFromUser();
+    loadInvoiceLogs();
+});
+
+// ---- Generate the PDF ----
+async function generateInvoicePDF() {
+    const btn = document.getElementById("invPdfBtn");
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-pulse"></i> Generating…';
+
+    try {
+        // Validate
+        const selected = invFilteredLogs.filter(l => invSelectedIds.has(String(l.id)));
+        if (!selected.length) {
+            alert("Select at least one time log to bill.");
+            return;
+        }
+        const rate = parseFloat(document.getElementById("invRate").value);
+        if (isNaN(rate) || rate <= 0) {
+            alert("Enter a valid hourly rate.");
+            return;
+        }
+
+        const invNumber    = document.getElementById("invNumber").value.trim() || "INV-0001";
+        const invDateIso   = document.getElementById("invDate").value;
+        const invDueIso    = document.getElementById("invDueDate").value;
+        const gstOn        = document.getElementById("invGstToggle").checked;
+        const fromName     = document.getElementById("invFromName").value.trim()    || "—";
+        const fromAddress  = document.getElementById("invFromAddress").value.trim() || "—";
+        const fromEmail    = document.getElementById("invFromEmail").value.trim()   || "—";
+        const fromIrd      = document.getElementById("invFromIrd").value.trim()     || "—";
+        const toName       = document.getElementById("invToName").value.trim()      || "—";
+        const toAddress    = document.getElementById("invToAddress").value.trim()   || "—";
+        const toEmail      = document.getElementById("invToEmail").value.trim()     || "—";
+
+        const jobMap = {};
+        getCachedAllJobs().forEach(j => { jobMap[String(j.id)] = j.job_name || "Untitled"; });
+
+        // Build line items
+        const lines = selected.map(log => {
+            const inTime  = new Date(log.clocked_in_at);
+            const outTime = new Date(log.clocked_out_at);
+            const hours = (outTime - inTime) / 3600000;
+            const amount = hours * rate;
+            return {
+                date: inTime,
+                job: jobMap[String(log.job_id)] || "Unknown job",
+                desc: `${inTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${outTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+                hours,
+                amount
+            };
+        });
+
+        const subtotal = lines.reduce((s, l) => s + l.amount, 0);
+        const gst = gstOn ? subtotal * 0.15 : 0;
+        const total = subtotal + gst;
+        const totalHours = lines.reduce((s, l) => s + l.hours, 0);
+
+        // Load jsPDF
+        const jsPDF = await loadJsPDF();
+        const doc = new jsPDF({ unit: "pt", format: "a4" });
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        const margin = 40;
+        const contentW = pageW - margin * 2;
+
+        // --- Header band ---
+        doc.setFillColor(11, 17, 32);
+        doc.rect(0, 0, pageW, 110, "F");
+        doc.setFillColor(245, 158, 11);
+        doc.rect(0, 110, pageW, 4, "F");
+
+        doc.setTextColor(245, 158, 11);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(22);
+        doc.text(fromName, margin, 50);
+
+        doc.setTextColor(203, 213, 225);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(fromAddress, margin, 68);
+        doc.text(fromEmail, margin, 82);
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(22);
+        doc.text("TAX INVOICE", pageW - margin, 50, { align: "right" });
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(203, 213, 225);
+        doc.text(`Invoice #: ${invNumber}`, pageW - margin, 68, { align: "right" });
+        doc.text(`Date: ${formatNZDate(invDateIso)}`, pageW - margin, 82, { align: "right" });
+        doc.text(`Due: ${formatNZDate(invDueIso)}`, pageW - margin, 96, { align: "right" });
+
+        let y = 140;
+
+        // --- Bill-to block ---
+        const billToX = margin;
+        const billToW = contentW * 0.6;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text("BILL TO", billToX, y);
+        y += 14;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(15, 23, 42);
+        doc.text(toName, billToX, y);
+        y += 15;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(51, 65, 85);
+        if (toAddress !== "—") { doc.text(toAddress, billToX, y); y += 13; }
+        if (toEmail   !== "—") { doc.text(toEmail,   billToX, y); y += 13; }
+
+        // IRD on the right of the bill-to block
+        const irdX = pageW - margin;
+        let irdY = 154;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text("IRD NUMBER", irdX, irdY, { align: "right" });
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(15, 23, 42);
+        doc.text(fromIrd, irdX, irdY + 14, { align: "right" });
+
+        y += 20;
+
+        // --- Line items table ---
+        y = ensureSpace(doc, y, 60, pageH, margin);
+
+        // Table header
+        const cols = {
+            date:  margin,
+            job:   margin + 80,
+            desc:  margin + 230,
+            hours: margin + 380,
+            amount: pageW - margin
+        };
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(margin, y, contentW, 26, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text("DATE",   cols.date,   y + 17);
+        doc.text("JOB",    cols.job,    y + 17);
+        doc.text("TIME",   cols.desc,   y + 17);
+        doc.text("HOURS",  cols.hours,  y + 17, { align: "right" });
+        doc.text("AMOUNT", cols.amount, y + 17, { align: "right" });
+        y += 26;
+
+        // Rows
+        lines.forEach((line, i) => {
+            y = ensureSpace(doc, y, 30, pageH, margin);
+            if (i % 2 === 1) {
+                doc.setFillColor(252, 253, 254);
+                doc.rect(margin, y, contentW, 22, "F");
+            }
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9.5);
+            doc.setTextColor(30, 41, 59);
+            doc.text(formatNZDate(line.date), cols.date, y + 15);
+            const jobWrapped = doc.splitTextToSize(line.job, 140);
+            doc.text(jobWrapped[0], cols.job, y + 15);
+            doc.text(line.desc, cols.desc, y + 15);
+            doc.text(line.hours.toFixed(2), cols.hours, y + 15, { align: "right" });
+            doc.text(`$${line.amount.toFixed(2)}`, cols.amount, y + 15, { align: "right" });
+            y += 22;
+        });
+
+        // Table bottom border
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, y, pageW - margin, y);
+        y += 20;
+
+        // --- Totals ---
+        y = ensureSpace(doc, y, 100, pageH, margin);
+        const totX = pageW - margin;
+
+        const drawTotalRow = (label, value, bold) => {
+            doc.setFont("helvetica", bold ? "bold" : "normal");
+            doc.setFontSize(bold ? 12 : 10);
+            doc.setTextColor(bold ? 15 : 51, bold ? 23 : 65, bold ? 42 : 85);
+            doc.text(label, totX - 200, y);
+            doc.text(value, totX, y, { align: "right" });
+            y += bold ? 20 : 16;
+        };
+
+        drawTotalRow(`Total hours`, totalHours.toFixed(2));
+        drawTotalRow(`Subtotal (ex GST)`, `$${subtotal.toFixed(2)}`);
+        if (gstOn) drawTotalRow(`GST (15%)`, `$${gst.toFixed(2)}`);
+        y += 6;
+        doc.setDrawColor(226, 232, 240);
+        doc.line(totX - 220, y - 8, totX, y - 8);
+        drawTotalRow(`TOTAL (NZD)`, `$${total.toFixed(2)}`, true);
+
+        // --- Payment note ---
+        y += 20;
+        y = ensureSpace(doc, y, 40, pageH, margin);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(9.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text("Please pay by the due date. Thank you for your business.", margin, y);
+
+        // --- Footer on every page ---
+        const pageCount = doc.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.setTextColor(148, 163, 184);
+            doc.text(`${fromName} — TAX INVOICE ${invNumber}`, margin, pageH - 18);
+            doc.text(`Page ${i} of ${pageCount}`, pageW - margin, pageH - 18, { align: "right" });
+        }
+
+        // --- Save / share ---
+        const fname = `Invoice_${invNumber}_${toName.replace(/\s+/g, "_")}.pdf`;
+        const blob = doc.output("blob");
+        const file = new File([blob], fname, { type: "application/pdf" });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title: `Invoice ${invNumber}` });
+            } catch (err) {
+                if (err.name !== "AbortError") doc.save(fname);
+            }
+        } else {
+            doc.save(fname);
+        }
+    } catch (err) {
+        console.error("Invoice PDF failed:", err);
+        alert("Failed to generate invoice: " + (err.message || "Unknown error"));
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+
+document.getElementById("invPdfBtn")?.addEventListener("click", generateInvoicePDF);
+
 // ==================== SERVICE WORKER & UPDATES ====================
 // Deterministic update system. See build.js / sw.js / update-check.js.
 
