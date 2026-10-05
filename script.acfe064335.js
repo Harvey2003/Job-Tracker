@@ -2085,18 +2085,20 @@ document.querySelectorAll("#userTimesRangeTabs .userTimesRangeTab").forEach(btn 
 // ==================== INVOICE GENERATOR ====================
 
 // State
-let invAllLogs = [];         // raw logs fetched for current job scope
-let invFilteredLogs = [];    // after date filter
+let invAllLogs = [];
+let invFilteredLogs = [];
 let invSelectedIds = new Set();
-let invJobScope = "all";     // 'all' or a specific job_id
-let invDateRange = "7d";     // '7d' | '7w' | 'all' | 'custom'
-let invFromDate = null;      // ISO string when custom
+let invJobScope = "all";             // 'all' or a specific job_id
+let invDateRange = "7d";             // '7d' | '7w' | 'all' | 'custom'
+let invFromDate = null;
 let invToDate = null;
-let invBreakMinutes = {};    // { [logId]: minutes } — per-log override
+let invBreakMinutes = {};            // { [logId]: minutes } — per-log override
+let invRateOverrides = {};           // { [logId]: rate } — per-log override
 
 // ---- Panel open/close ----
 function openInvoicePanel() {
-    populateInvoiceJobSelect();
+    populateInvoiceJobPicker();
+    updateJobPickerLabel();
     defaultInvoiceDates();
     defaultInvoiceFromUser();
     document.getElementById("invoicePanel").classList.add("active");
@@ -2104,6 +2106,7 @@ function openInvoicePanel() {
 }
 function closeInvoicePanel() {
     document.getElementById("invoicePanel").classList.remove("active");
+    closeInvJobPicker();
 }
 
 function defaultInvoiceDates() {
@@ -2124,18 +2127,74 @@ function defaultInvoiceFromUser() {
     if (emailEl && !emailEl.value) emailEl.value = email;
 }
 
-function populateInvoiceJobSelect() {
-    const sel = document.getElementById("invJobScope");
-    if (!sel) return;
-    const jobs = getCachedAllJobs()
-        .slice()
+// ---- Job picker sheet ----
+function populateInvoiceJobPicker() {
+    const listEl = document.getElementById("invJobPickerList");
+    if (!listEl) return;
+    const jobs = getCachedAllJobs().slice()
         .sort((a, b) => (a.job_name || "").localeCompare(b.job_name || ""));
-    const currentVal = sel.value;
-    sel.innerHTML = `<option value="all">All jobs</option>` +
-        jobs.map(j => `<option value="${j.id}">${escapeHtml(j.job_name || "Untitled")}</option>`).join("");
-    if (currentVal && [...sel.options].some(o => o.value === currentVal)) {
-        sel.value = currentVal;
+
+    const items = [
+        { id: "all", name: "All jobs", client: "" },
+        ...jobs.map(j => ({ id: String(j.id), name: j.job_name || "Untitled", client: j.client_name || "" }))
+    ];
+
+    listEl.innerHTML = items.map(it => {
+        const isActive = (invJobScope === it.id) || (invJobScope === "all" && it.id === "all");
+        return `
+            <button type="button" class="invJobPickerItem ${isActive ? "is-active" : ""}" data-job-id="${it.id}">
+                <span class="invJobPickerItemName">${escapeHtml(it.name)}</span>
+                ${it.client ? `<span class="invJobPickerItemMeta">${escapeHtml(it.client)}</span>` : ""}
+            </button>
+        `;
+    }).join("");
+
+    listEl.querySelectorAll(".invJobPickerItem").forEach(btn => {
+        btn.addEventListener("click", () => {
+            invJobScope = btn.dataset.jobId;
+            updateJobPickerLabel();
+            closeInvJobPicker();
+            invSelectedIds.clear();
+            invBreakMinutes = {};
+            invRateOverrides = {};
+            loadInvoiceLogs();
+        });
+    });
+}
+
+function updateJobPickerLabel() {
+    const lbl = document.getElementById("invJobPickerLabel");
+    if (!lbl) return;
+    if (invJobScope === "all") {
+        lbl.textContent = "All jobs";
+        return;
     }
+    const job = getCachedAllJobs().find(j => String(j.id) === String(invJobScope));
+    lbl.textContent = job ? (job.job_name || "Untitled") : "All jobs";
+}
+
+function openInvJobPicker() {
+    populateInvoiceJobPicker();
+    const search = document.getElementById("invJobPickerSearch");
+    if (search) search.value = "";
+    // live search
+    if (search && !search.dataset.wired) {
+        search.addEventListener("input", () => {
+            const term = search.value.trim().toLowerCase();
+            const listEl = document.getElementById("invJobPickerList");
+            if (!listEl) return;
+            listEl.querySelectorAll(".invJobPickerItem").forEach(item => {
+                const name = item.querySelector(".invJobPickerItemName")?.textContent.toLowerCase() || "";
+                item.style.display = (!term || name.includes(term)) ? "" : "none";
+            });
+        });
+        search.dataset.wired = "1";
+    }
+    document.getElementById("invJobPickerSheet").classList.add("active");
+}
+function closeInvJobPicker() {
+    const s = document.getElementById("invJobPickerSheet");
+    if (s) s.classList.remove("active");
 }
 
 // ---- Date filter helpers ----
@@ -2157,16 +2216,26 @@ function invRangeToCeiling() {
     return Infinity;
 }
 
-// ---- Break helpers ----
+// ---- Break / rate defaults ----
 function invDefaultBreak() {
     const el = document.getElementById("invBreakDefault");
     const n = parseInt(el?.value, 10);
+    return isNaN(n) || n < 0 ? 0 : n;
+}
+function invDefaultRate() {
+    const el = document.getElementById("invRate");
+    const n = parseFloat(el?.value);
     return isNaN(n) || n < 0 ? 0 : n;
 }
 function invBreakForLog(logId) {
     const key = String(logId);
     if (key in invBreakMinutes) return invBreakMinutes[key];
     return invDefaultBreak();
+}
+function invRateForLog(logId) {
+    const key = String(logId);
+    if (key in invRateOverrides) return invRateOverrides[key];
+    return invDefaultRate();
 }
 
 // ---- Fetch logs ----
@@ -2178,8 +2247,8 @@ async function loadInvoiceLogs() {
     let q = db.from("time_logs")
         .select("*")
         .eq("user_id", currentUser.id)
-        .eq("is_travel", false)                 // work only
-        .not("clocked_out_at", "is", null)      // completed only
+        .eq("is_travel", false)
+        .not("clocked_out_at", "is", null)
         .order("clocked_in_at", { ascending: false });
 
     if (invJobScope !== "all") {
@@ -2222,72 +2291,92 @@ function renderInvoiceLogList() {
     listEl.innerHTML = invFilteredLogs.map(log => {
         const inTime = new Date(log.clocked_in_at);
         const outTime = new Date(log.clocked_out_at);
-        const totalHours = (outTime - inTime) / 3600000;
+        const fullHours = (outTime - inTime) / 3600000;
         const breakMin = invBreakForLog(log.id);
-        const billable = Math.max(0, totalHours - breakMin / 60);
+        const billable = Math.max(0, fullHours - breakMin / 60);
         const dateStr = inTime.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+        const timeStr = `${inTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} – ${outTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
         const jobName = jobMap[String(log.job_id)] || "Unknown job";
         const isSel = invSelectedIds.has(String(log.id));
+        const rate = invRateForLog(log.id);
 
         return `
-            <label class="invLogRow ${isSel ? "is-checked" : ""}" data-log-id="${log.id}">
-                <input type="checkbox" data-log-id="${log.id}" ${isSel ? "checked" : ""} />
-                <div class="invLogInfo">
-                    <span class="invLogTitle">${escapeHtml(jobName)}</span>
-                    <span class="invLogMeta"><span>${escapeHtml(dateStr)}</span></span>
+            <div class="invLogRow ${isSel ? "is-checked" : ""}" data-log-id="${log.id}">
+                <div class="invLogTop" data-toggle-row>
+                    <div class="invLogCheck"><i class="fa-solid fa-check"></i></div>
+                    <div class="invLogInfo">
+                        <span class="invLogTitle">${escapeHtml(jobName)}</span>
+                        <span class="invLogMeta">${escapeHtml(dateStr)} · ${escapeHtml(timeStr)}</span>
+                    </div>
+                    <span class="invLogHours">${billable.toFixed(2)} h</span>
                 </div>
-                <span class="invLogBreak">
-                    <input type="number" min="0" step="5"
-                           data-log-id="${log.id}"
-                           value="${breakMin}" />
-                    <span>min</span>
-                </span>
-                <span class="invLogHours">
-                    ${billable.toFixed(2)} h
-                    ${breakMin > 0 ? `<span class="invLogHoursAdjusted">(−${breakMin}m)</span>` : ""}
-                </span>
-            </label>
+                <div class="invLogExtras">
+                    <div class="invLogExtra">
+                        <span class="invLogExtraLabel">Rate (NZD/h)</span>
+                        <div class="invLogExtraInputWrap">
+                            <span class="prefix">$</span>
+                            <input type="number" min="0" step="0.01" inputmode="decimal"
+                                   data-role="rate" data-log-id="${log.id}"
+                                   value="${rate || ""}" placeholder="0" />
+                        </div>
+                    </div>
+                    <div class="invLogExtra">
+                        <span class="invLogExtraLabel">Break</span>
+                        <div class="invLogExtraInputWrap">
+                            <input type="number" min="0" step="5" inputmode="numeric"
+                                   data-role="break" data-log-id="${log.id}"
+                                   value="${breakMin}" />
+                            <span class="suffix">min</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
     }).join("");
 
-    // Wire checkboxes
-    listEl.querySelectorAll('.invLogRow input[type="checkbox"]').forEach(cb => {
-        cb.addEventListener("change", () => {
-            const id = String(cb.dataset.logId);
-            if (cb.checked) invSelectedIds.add(id);
-            else invSelectedIds.delete(id);
-            const row = cb.closest(".invLogRow");
-            if (row) row.classList.toggle("is-checked", cb.checked);
+    // Wire row toggle (tap on the top section only — the extras inputs
+    // need to remain interactive without toggling selection)
+    listEl.querySelectorAll(".invLogRow").forEach(row => {
+        const top = row.querySelector("[data-toggle-row]");
+        if (!top) return;
+        top.addEventListener("click", () => {
+            const id = row.dataset.logId;
+            if (invSelectedIds.has(id)) invSelectedIds.delete(id);
+            else invSelectedIds.add(id);
+            row.classList.toggle("is-checked", invSelectedIds.has(id));
             updateInvoiceTotals();
         });
     });
 
-    // Wire break inputs — update the row's displayed hours live.
-    listEl.querySelectorAll('.invLogBreak input').forEach(inp => {
+    // Wire rate inputs
+    listEl.querySelectorAll('input[data-role="rate"]').forEach(inp => {
         inp.addEventListener("input", () => {
             const id = String(inp.dataset.logId);
-            const val = parseInt(inp.value, 10);
-            invBreakMinutes[id] = isNaN(val) || val < 0 ? 0 : val;
-            // Re-render just that row's hours display
-            const row = inp.closest(".invLogRow");
+            const v = parseFloat(inp.value);
+            if (isNaN(v) || v < 0) delete invRateOverrides[id];
+            else invRateOverrides[id] = v;
+            updateInvoiceTotals();
+        });
+    });
+
+    // Wire break inputs — update that row's hours display live
+    listEl.querySelectorAll('input[data-role="break"]').forEach(inp => {
+        inp.addEventListener("input", () => {
+            const id = String(inp.dataset.logId);
+            const v = parseInt(inp.value, 10);
+            invBreakMinutes[id] = isNaN(v) || v < 0 ? 0 : v;
             const log = invFilteredLogs.find(l => String(l.id) === id);
-            if (row && log) {
+            const row = inp.closest(".invLogRow");
+            if (log && row) {
                 const inTime = new Date(log.clocked_in_at);
                 const outTime = new Date(log.clocked_out_at);
-                const totalHours = (outTime - inTime) / 3600000;
-                const billable = Math.max(0, totalHours - invBreakMinutes[id] / 60);
+                const fullHours = (outTime - inTime) / 3600000;
+                const billable = Math.max(0, fullHours - invBreakMinutes[id] / 60);
                 const hoursEl = row.querySelector(".invLogHours");
-                if (hoursEl) {
-                    hoursEl.innerHTML = `
-                        ${billable.toFixed(2)} h
-                        ${invBreakMinutes[id] > 0 ? `<span class="invLogHoursAdjusted">(−${invBreakMinutes[id]}m)</span>` : ""}
-                    `;
-                }
+                if (hoursEl) hoursEl.textContent = `${billable.toFixed(2)} h`;
             }
             updateInvoiceTotals();
         });
-        // Prevent clicks on the input from toggling the checkbox via label.
-        inp.addEventListener("click", (e) => e.stopPropagation());
     });
 
     updateInvoiceTotals();
@@ -2295,6 +2384,7 @@ function renderInvoiceLogList() {
 
 function updateInvoiceTotals() {
     let totalHours = 0;
+    let totalAmount = 0;
     let count = 0;
     invFilteredLogs.forEach(log => {
         if (!invSelectedIds.has(String(log.id))) return;
@@ -2302,13 +2392,17 @@ function updateInvoiceTotals() {
         const outTime = new Date(log.clocked_out_at);
         const fullHours = (outTime - inTime) / 3600000;
         const billable = Math.max(0, fullHours - invBreakForLog(log.id) / 60);
+        const rate = invRateForLog(log.id);
         totalHours += billable;
+        totalAmount += billable * rate;
         count++;
     });
     const hoursEl = document.getElementById("invSelectedHours");
     const countEl = document.getElementById("invSelectedCount");
+    const subEl = document.getElementById("invSelectedSubtotal");
     if (hoursEl) hoursEl.textContent = totalHours.toFixed(2);
     if (countEl) countEl.textContent = String(count);
+    if (subEl) subEl.textContent = `$${totalAmount.toFixed(2)}`;
 }
 
 // ---- Wiring ----
@@ -2318,11 +2412,10 @@ document.getElementById("sidebarInvoiceBtn")?.addEventListener("click", () => {
 });
 document.getElementById("invClose")?.addEventListener("click", closeInvoicePanel);
 
-document.getElementById("invJobScope")?.addEventListener("change", (e) => {
-    invJobScope = e.target.value;
-    invSelectedIds.clear();
-    invBreakMinutes = {};
-    loadInvoiceLogs();
+document.getElementById("invJobPickerBtn")?.addEventListener("click", openInvJobPicker);
+document.getElementById("invJobPickerClose")?.addEventListener("click", closeInvJobPicker);
+document.getElementById("invJobPickerSheet")?.addEventListener("click", (e) => {
+    if (e.target === document.getElementById("invJobPickerSheet")) closeInvJobPicker();
 });
 
 document.querySelectorAll("#invDateTabs .invTab").forEach(btn => {
@@ -2346,11 +2439,10 @@ document.getElementById("invToDate")?.addEventListener("change", (e) => {
     applyInvoiceDateFilter();
 });
 
-// Update all default breaks when the default input changes (only for logs
-// without an explicit override).
-document.getElementById("invBreakDefault")?.addEventListener("input", () => {
-    renderInvoiceLogList();
-});
+// When the global default rate or break changes, refresh the list so
+// overrides update unless they've been touched.
+document.getElementById("invRate")?.addEventListener("input", renderInvoiceLogList);
+document.getElementById("invBreakDefault")?.addEventListener("input", renderInvoiceLogList);
 
 document.getElementById("invSelectAllBtn")?.addEventListener("click", () => {
     invFilteredLogs.forEach(log => invSelectedIds.add(String(log.id)));
@@ -2365,13 +2457,13 @@ document.getElementById("invResetBtn")?.addEventListener("click", () => {
     if (!confirm("Reset the invoice form and clear selections?")) return;
     invSelectedIds.clear();
     invBreakMinutes = {};
+    invRateOverrides = {};
     invJobScope = "all";
     invDateRange = "7d";
     invFromDate = null;
     invToDate = null;
 
-    const sel = document.getElementById("invJobScope");
-    if (sel) sel.value = "all";
+    updateJobPickerLabel();
     document.querySelectorAll("#invDateTabs .invTab").forEach(b => {
         b.classList.toggle("active", b.dataset.range === "7d");
     });
@@ -2403,12 +2495,41 @@ async function generateInvoicePDF() {
             alert("Select at least one time log to bill.");
             return;
         }
-        const rate = parseFloat(document.getElementById("invRate").value);
-        if (isNaN(rate) || rate <= 0) {
-            alert("Enter a valid hourly rate.");
-            return;
-        }
 
+        // Build per-log billable rows
+        const perLog = selected.map(log => {
+            const inTime = new Date(log.clocked_in_at);
+            const outTime = new Date(log.clocked_out_at);
+            const fullHours = (outTime - inTime) / 3600000;
+            const billable = Math.max(0, fullHours - invBreakForLog(log.id) / 60);
+            const rate = invRateForLog(log.id);
+            return {
+                date: inTime,
+                hours: billable,
+                rate,
+                amount: billable * rate
+            };
+        });
+
+        // Merge by calendar date (local)
+        const dayMap = new Map();
+        perLog.forEach(row => {
+            const d = row.date;
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            if (!dayMap.has(key)) {
+                dayMap.set(key, { date: d, hours: 0, amount: 0 });
+            }
+            const entry = dayMap.get(key);
+            entry.hours += row.hours;
+            entry.amount += row.amount;
+        });
+
+        const lines = Array.from(dayMap.values()).sort((a, b) => a.date - b.date);
+
+        const totalHours = lines.reduce((s, l) => s + l.hours, 0);
+        const total = lines.reduce((s, l) => s + l.amount, 0);
+
+        // Details
         const invNumber   = document.getElementById("invNumber").value.trim() || "INV-0001";
         const invDateIso  = document.getElementById("invDate").value;
         const fromName    = document.getElementById("invFromName").value.trim()    || "—";
@@ -2418,25 +2539,6 @@ async function generateInvoicePDF() {
         const toName      = document.getElementById("invToName").value.trim()      || "—";
         const toAddress   = document.getElementById("invToAddress").value.trim()   || "—";
         const toEmail     = document.getElementById("invToEmail").value.trim()     || "—";
-
-        // Build line items: one row per selected log, hours only.
-        const lines = selected
-            .map(log => {
-                const inTime = new Date(log.clocked_in_at);
-                const outTime = new Date(log.clocked_out_at);
-                const fullHours = (outTime - inTime) / 3600000;
-                const billable = Math.max(0, fullHours - invBreakForLog(log.id) / 60);
-                return {
-                    date: inTime,
-                    hours: billable,
-                    amount: billable * rate
-                };
-            })
-            // Sort chronologically for a tidy invoice.
-            .sort((a, b) => a.date - b.date);
-
-        const totalHours = lines.reduce((s, l) => s + l.hours, 0);
-        const total = lines.reduce((s, l) => s + l.amount, 0);
 
         const jsPDF = await loadJsPDF();
         const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -2476,24 +2578,22 @@ async function generateInvoicePDF() {
         let y = 150;
 
         // --- Bill-to block ---
-        const billToX = margin;
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
-        doc.text("BILL TO", billToX, y);
+        doc.text("BILL TO", margin, y);
         y += 14;
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
         doc.setTextColor(15, 23, 42);
-        doc.text(toName, billToX, y);
+        doc.text(toName, margin, y);
         y += 15;
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor(51, 65, 85);
-        if (toAddress !== "—") { doc.text(toAddress, billToX, y); y += 13; }
-        if (toEmail   !== "—") { doc.text(toEmail,   billToX, y); y += 13; }
+        if (toAddress !== "—") { doc.text(toAddress, margin, y); y += 13; }
+        if (toEmail   !== "—") { doc.text(toEmail,   margin, y); y += 13; }
 
-        // IRD on the right of the bill-to block
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
@@ -2544,12 +2644,11 @@ async function generateInvoicePDF() {
         doc.line(margin, y, pageW - margin, y);
         y += 24;
 
-        // --- Totals: Total hours then Total amount, cleanly stacked ---
+        // --- Totals ---
         y = ensureSpace(doc, y, 80, pageH, margin);
         const labelX = pageW - margin - 200;
         const valueX = pageW - margin;
 
-        // Total hours row
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor(100, 116, 139);
@@ -2559,13 +2658,11 @@ async function generateInvoicePDF() {
         doc.text(totalHours.toFixed(2), valueX, y, { align: "right" });
         y += 22;
 
-        // Divider line — sits in its own gap, doesn't overlap text
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.8);
         doc.line(labelX, y, valueX, y);
         y += 22;
 
-        // Total amount row
         doc.setFont("helvetica", "bold");
         doc.setFontSize(13);
         doc.setTextColor(15, 23, 42);
@@ -2580,7 +2677,7 @@ async function generateInvoicePDF() {
         doc.setTextColor(100, 116, 139);
         doc.text("Thank you for your business.", margin, y);
 
-        // --- Footer on every page ---
+        // --- Footer ---
         const pageCount = doc.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);

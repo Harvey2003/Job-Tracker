@@ -12,11 +12,11 @@
         <meta name="apple-mobile-web-app-title" content="JobTrack" />
         <meta name="application-name" content="JobTrack" />
         <meta name="theme-color" content="#0b1120" />
-        <meta name="app-version" content="20261005085036">
+        <meta name="app-version" content="20261005091503">
         <title>JobTrack</title>
         <link rel="manifest" href="manifest.json" />
         <link rel="apple-touch-icon" href="icon-192.png" />
-        <link rel="stylesheet" href="style.cf7aa51aab.css" />
+        <link rel="stylesheet" href="style.ca4d3affae.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </head>
@@ -651,12 +651,14 @@
                     <div class="invSection">
                         <p class="invSectionTitle"><i class="fa-regular fa-clock"></i> Step 1 — Select time to bill</p>
 
-                        <!-- Job scope -->
+                        <!-- Job picker (tappable button that opens a sheet) -->
                         <div class="invField">
                             <label class="invLabel">Which jobs</label>
-                            <select id="invJobScope" class="invInput">
-                                <option value="all">All jobs</option>
-                            </select>
+                            <button type="button" id="invJobPickerBtn" class="invPickerBtn">
+                                <i class="fa-solid fa-briefcase"></i>
+                                <span id="invJobPickerLabel">All jobs</span>
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
                         </div>
 
                         <!-- Date filter -->
@@ -682,10 +684,16 @@
                             </div>
                         </div>
 
-                        <!-- Break default -->
-                        <div class="invField">
-                            <label class="invLabel" for="invBreakDefault">Default break per log (minutes)</label>
-                            <input type="number" id="invBreakDefault" class="invInput" min="0" step="1" value="30" />
+                        <!-- Default rate + default break -->
+                        <div class="invFieldRow">
+                            <div class="invField">
+                                <label class="invLabel" for="invRate">Hourly rate (NZD)</label>
+                                <input type="number" id="invRate" class="invInput" min="0" step="0.01" placeholder="e.g. 95.00" />
+                            </div>
+                            <div class="invField">
+                                <label class="invLabel" for="invBreakDefault">Break per log (min)</label>
+                                <input type="number" id="invBreakDefault" class="invInput" min="0" step="5" value="30" />
+                            </div>
                         </div>
 
                         <!-- Log list -->
@@ -712,6 +720,10 @@
                                 <span>Selected logs</span>
                                 <b id="invSelectedCount">0</b>
                             </div>
+                            <div class="invTotalsRow invTotalsRowBig">
+                                <span>Subtotal</span>
+                                <b id="invSelectedSubtotal">$0.00</b>
+                            </div>
                         </div>
                     </div>
 
@@ -728,11 +740,6 @@
                                 <label class="invLabel" for="invDate">Invoice date</label>
                                 <input type="date" id="invDate" class="invInput" />
                             </div>
-                        </div>
-
-                        <div class="invField">
-                            <label class="invLabel" for="invRate">Hourly rate (NZD)</label>
-                            <input type="number" id="invRate" class="invInput" min="0" step="0.01" placeholder="e.g. 95.00" />
                         </div>
                     </div>
 
@@ -796,9 +803,21 @@
             </div>
         </div>
 
+        <!-- JOB PICKER SHEET (for the invoice panel) -->
+        <div id="invJobPickerSheet">
+            <div id="invJobPickerCard">
+                <div class="modalHeader">
+                    <p class="modalTitle"><i class="fa-solid fa-briefcase"></i> Choose jobs</p>
+                    <button class="modalClose" id="invJobPickerClose"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <input type="text" id="invJobPickerSearch" class="invInput" placeholder="Search jobs..." style="margin-bottom:10px;" />
+                <div id="invJobPickerList" class="invJobPickerList"></div>
+            </div>
+        </div>
+
         <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        <script src="script.752dab144c.js"></script>
+        <script src="script.acfe064335.js"></script>
 
         <!-- Auto-Update System -->
         <div id="appBanner" style="display:none;background:#ea580c;color:white;padding:12px;text-align:center;font-size:14px;margin:0;position:sticky;top:0;z-index:9999;">

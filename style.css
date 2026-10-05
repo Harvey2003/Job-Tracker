@@ -1574,6 +1574,307 @@ textarea {
        color: #f8fafc;
    }
 
+   /* === INVOICE — v2 (mobile-first) === */
+
+/* Bigger touch targets everywhere */
+#invoicePanel .invInput {
+    height: 52px;
+    font-size: 16px; /* prevents iOS zoom-on-focus */
+}
+
+/* Job picker button */
+.invPickerBtn {
+    width: 100%;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #0b1120;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+.invPickerBtn i:first-child {
+    color: #f59e0b;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.invPickerBtn i:last-child {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+.invPickerBtn span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #0b1120;
+}
+.invPickerBtn:active {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    transform: scale(0.995);
+}
+
+/* Log list rows — bigger, tap-to-toggle */
+.invLogList {
+    max-height: 380px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px;
+    border: 1px solid #eef2f6;
+    border-radius: 12px;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.invLogRow {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #ffffff;
+    border: 1.5px solid #eef2f6;
+    border-radius: 14px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.invLogRow:active { background: #f1f5f9; }
+.invLogRow.is-checked {
+    border-color: #fcd34d;
+    background: #fffbeb;
+    box-shadow: 0 1px 3px rgba(180, 83, 9, 0.08);
+}
+
+/* Top row: checkbox + info + hours */
+.invLogTop {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+}
+.invLogCheck {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    border: 2px solid #cbd5e1;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+.invLogRow.is-checked .invLogCheck {
+    background: #f59e0b;
+    border-color: #f59e0b;
+    color: #ffffff;
+}
+.invLogInfo {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.invLogTitle {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #0b1120;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.invLogMeta {
+    font-size: 0.75rem;
+    color: #64748b;
+    font-weight: 500;
+}
+.invLogHours {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #0f172a;
+    background: #e2e8f0;
+    padding: 5px 10px;
+    border-radius: 100px;
+    white-space: nowrap;
+    text-align: center;
+    flex-shrink: 0;
+}
+.invLogRow.is-checked .invLogHours {
+    background: #fde68a;
+    color: #78350f;
+}
+
+/* Bottom row (selected only): rate + break inputs side by side */
+.invLogExtras {
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #e2e8f0;
+}
+.invLogRow.is-checked .invLogExtras {
+    display: grid;
+}
+.invLogExtra {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.invLogExtraLabel {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.invLogExtraInputWrap {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 0 10px;
+    gap: 6px;
+}
+.invLogExtraInputWrap:focus-within {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.10);
+}
+.invLogExtraInputWrap .prefix,
+.invLogExtraInputWrap .suffix {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.invLogExtraInputWrap input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0b1120;
+    padding: 0;
+    -moz-appearance: textfield;
+    text-align: right;
+}
+.invLogExtraInputWrap input::-webkit-outer-spin-button,
+.invLogExtraInputWrap input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Subtotal row in totals block */
+.invTotalsRowBig {
+    padding-top: 8px;
+    margin-top: 4px;
+    border-top: 1px solid #cbd5e1;
+    font-size: 1rem !important;
+    color: #0b1120 !important;
+    font-weight: 700;
+}
+.invTotalsRowBig b {
+    font-size: 1.15rem;
+    color: #b45309 !important;
+}
+
+/* === JOB PICKER SHEET (invoice) === */
+#invJobPickerSheet {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 17, 32, 0.55);
+    backdrop-filter: blur(6px);
+    z-index: 620;
+    align-items: flex-end;
+    justify-content: center;
+}
+#invJobPickerSheet.active { display: flex; }
+
+#invJobPickerCard {
+    background: #ffffff;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    border-radius: 24px 24px 0 0;
+    padding: 1.1rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom)) 1.1rem;
+    box-shadow: 0 -20px 60px rgba(11, 17, 32, 0.30);
+    max-height: 80dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.invJobPickerList {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 4px;
+}
+
+.invJobPickerItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 14px;
+    background: #ffffff;
+    border: 1.5px solid #eef2f6;
+    border-radius: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #0b1120;
+    text-align: left;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.invJobPickerItem:active { background: #f1f5f9; border-color: #cbd5e1; }
+.invJobPickerItem.is-active {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #78350f;
+}
+.invJobPickerItemName {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.invJobPickerItemMeta {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
 /* === NOTES (inline editor on detail view) === */
 #detailNotesText {
     font-size: 0.95rem;
