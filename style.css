@@ -1545,20 +1545,33 @@ textarea {
     #jobHeroName { font-size: 1.5rem; }
 }
 
-/* === SIDEBAR — MY TIMES BUTTON === */
-#sidebarUserTimesBtn {
-    width: 100%;
-    background: none;
-    border: none;
-    font-family: inherit;
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: #94a3b8;
-    text-align: left;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-#sidebarUserTimesBtn:active { background: #1e293b; color: #f8fafc; }
+/* === SIDEBAR — BUTTON-TYPE NAV ITEMS ===
+   The two buttons below need explicit resets so they render exactly
+   like the <div class="navItem"> entries around them. */
+   #sidebarUserTimesBtn,
+   #sidebarHeatPumpBtn {
+       width: 100%;
+       background: none;
+       border: none;
+       font-family: inherit;
+       font-size: 0.95rem;
+       font-weight: 500;
+       color: #94a3b8;
+       text-align: left;
+       cursor: pointer;
+       padding: 0.8rem 1rem;
+       border-radius: 12px;
+       display: flex;
+       align-items: center;
+       gap: 1rem;
+       transition: all 0.15s;
+       -webkit-tap-highlight-color: transparent;
+   }
+   #sidebarUserTimesBtn:active,
+   #sidebarHeatPumpBtn:active {
+       background: #1e293b;
+       color: #f8fafc;
+   }
 
 /* === NOTES (inline editor on detail view) === */
 #detailNotesText {
