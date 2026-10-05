@@ -1764,7 +1764,7 @@ async function generateHeatPumpPDF() {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor(180, 190, 205);
-        doc.text(data.date || new Date().toISOString().slice(0, 10), pageW - margin, 44, { align: "right" });
+        doc.text(formatNZDate(data.date), pageW - margin, 44, { align: "right" });
 
         let y = 120;
 
@@ -1781,8 +1781,8 @@ async function generateHeatPumpPDF() {
 
         // -- Checklist sections --
         data.sections.forEach((section) => {
-            // Section header: measure first
-            y = ensureSpace(doc, y, 40, pageH, margin);
+            // Section header
+            y = ensureSpace(doc, y, 48, pageH, margin);
             doc.setFillColor(248, 250, 252);
             doc.setDrawColor(226, 232, 240);
             doc.roundedRect(margin, y, contentW, 26, 6, 6, "FD");
@@ -1790,7 +1790,7 @@ async function generateHeatPumpPDF() {
             doc.setFontSize(10);
             doc.setTextColor(15, 23, 42);
             doc.text(section.title, margin + 10, y + 17);
-            y += 34;
+            y += 48;
 
             section.items.forEach((item) => {
                 y = ensureSpace(doc, y, 22, pageH, margin);
@@ -1817,10 +1817,10 @@ async function generateHeatPumpPDF() {
                 const textX = margin + 24;
                 const wrapped = doc.splitTextToSize(item.label, contentW - 30);
                 doc.text(wrapped, textX, y);
-                y += wrapped.length * 13 + 4;
+                y += wrapped.length * 13 + 8;
             });
 
-            y += 6;
+            y += 10;
         });
 
         // -- Notes --
@@ -1861,6 +1861,13 @@ async function generateHeatPumpPDF() {
         doc.setTextColor(100, 116, 139);
         doc.text("Signed by", margin, y + 14);
         doc.text("Date", margin + 260, y + 14);
+
+        // Sign-off date — current date in NZ format
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor(30, 41, 59);
+        doc.text(formatNZDate(null), margin + 260, y - 4);// Helper: ensures we have room on the current page, otherwise add a new one
+        function ensureSpace(doc, y, needed, pageH, margin) {
 
         // Signed name above the line if provided
         if (data.signoff) {
@@ -1906,6 +1913,27 @@ async function generateHeatPumpPDF() {
         btn.disabled = false;
         btn.innerHTML = original;
     }
+}
+
+// Helper: format a date (or Date/ISO string) as DD/MM/YYYY for NZ.
+// Pass null or undefined to use the current date.
+function formatNZDate(input) {
+    let d;
+    if (!input) {
+        d = new Date();
+    } else if (input instanceof Date) {
+        d = input;
+    } else if (typeof input === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input)) {
+        // ISO date from <input type="date"> — parse in local time, not UTC,
+        // to avoid the "shows yesterday" bug in NZDT.
+        const [yyyy, mm, dd] = input.split("-").map(Number);
+        d = new Date(yyyy, mm - 1, dd);
+    } else {
+        d = new Date(input);
+        if (isNaN(d.getTime())) d = new Date();
+    }
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
 // Helper: ensures we have room on the current page, otherwise add a new one
